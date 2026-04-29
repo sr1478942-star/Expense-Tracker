@@ -11,14 +11,31 @@
         <h2>Expense Tracker</h2>
         
         <div class="balance-container">
-            <h3>Total Expense: <br> ₹<span id="total-amount">0</span></h3>
+            <h3 class="overall-total">Total Kharcha: ₹<span id="total-amount">0</span></h3>
+            
+            <div class="month-filter-box">
+                <label for="month-filter">📅 Calendar (Mahina chunein):</label>
+                <input type="month" id="month-filter">
+            </div>
         </div>
 
         <form id="expense-form">
             <div class="form-control">
-                <label for="expense-name">Kharcha kahan kiya?</label>
-                <input type="text" id="expense-name" placeholder="e.g. Canteen, Books" required>
+                <label for="expense-name">Location / Kahan kharida?</label>
+                <input type="text" id="expense-name" placeholder="e.g. Lar Bajar, Pindi" required>
             </div>
+            
+            <div class="form-control">
+                <label for="expense-category">Item / Kya kharida?</label>
+                <select id="expense-category" required>
+                    <option value="market">🛒 Market / Sabji</option>
+                    <option value="food">🍔 Food / Canteen</option>
+                    <option value="travel">🚌 Travel / Petrol</option>
+                    <option value="education">📚 College / Books</option>
+                    <option value="other">💰 Other / Anya</option>
+                </select>
+            </div>
+
             <div class="form-control">
                 <label for="expense-amount">Kitne paise lage?</label>
                 <input type="number" id="expense-amount" placeholder="e.g. 150" required>
@@ -26,9 +43,8 @@
             <button type="submit" class="btn">Add Expense</button>
         </form>
 
-        <h3>Expense History</h3>
-        <ul id="expense-list" class="list">
-            </ul>
+        <h3>Expense List & History</h3>
+        <ul id="expense-list" class="list"></ul>
     </div>
 
     <script src="script.js"></script>

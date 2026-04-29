@@ -1,64 +1,137 @@
 const form = document.getElementById('expense-form');
 const expenseName = document.getElementById('expense-name');
+const expenseCategory = document.getElementById('expense-category'); 
 const expenseAmount = document.getElementById('expense-amount');
 const expenseList = document.getElementById('expense-list');
 const totalAmountSpan = document.getElementById('total-amount');
+const monthFilterInput = document.getElementById('month-filter');
 
-// 1. Local Storage se data nikalna
-// JSON.parse text ko wapas array banata hai
 let expenses = JSON.parse(localStorage.getItem('myExpenses'));
-
-// Agar pehli baar app khul raha hai aur data nahi hai, toh khali array bana do
 if (expenses == null) {
     expenses = [];
 }
 
-// 2. Data ko screen par dikhane ka function
 function showData() {
-    expenseList.innerHTML = ''; // Pehle purani list saaf karo
-    let total = 0;
+    expenseList.innerHTML = ''; 
+    let overallTotal = 0;
+    let selectedMonth = monthFilterInput.value; 
 
-    // Normal for-loop ka use karke ek-ek kharcha HTML me daalna
+    let groupedData = {};
+
     for (let i = 0; i < expenses.length; i++) {
-        const newExpense = document.createElement('li');
-        newExpense.innerHTML = `<span>${expenses[i].name}</span> <span>₹${expenses[i].amount}</span>`;
-        expenseList.appendChild(newExpense);
+        let exp = expenses[i];
 
-        // Total amount plus karna
-        total = total + expenses[i].amount;
+        if (selectedMonth !== "" && exp.monthYear !== selectedMonth) {
+            continue; 
+        }
+
+        overallTotal = overallTotal + exp.amount;
+
+        let naam = exp.name.toLowerCase();
+
+        // NAYA JADU YAHAN HAI: Ab hum historyList mein Category (cat) bhi save kar rahe hain
+        if (groupedData[naam] == undefined) {
+            groupedData[naam] = {
+                asliNaam: exp.name,
+                totalPaisa: exp.amount,
+                // Pehli baar location mili toh uski detail list me daalo
+                historyList: [ { time: exp.time, paisa: exp.amount, cat: exp.category } ] 
+            };
+        } else {
+            groupedData[naam].totalPaisa = groupedData[naam].totalPaisa + exp.amount; 
+            // Purani location me nayi detail aur uski CATEGEORY daalo
+            groupedData[naam].historyList.push({ time: exp.time, paisa: exp.amount, cat: exp.category }); 
+        }
     }
 
-    // Total amount HTML me update karna
-    totalAmountSpan.innerText = total;
+    for (let key in groupedData) {
+        let item = groupedData[key];
+
+        // Main heading ka icon ab Map/Location jaisa dikhega (Kyunki ye jagah ka naam hai)
+        let mainIcon = '📍'; 
+
+        // Andar ki choti list (History) ka HTML banana
+        let historyHTML = '';
+        for (let j = 0; j < item.historyList.length; j++) {
+            
+            // Sub-item ka Icon aur Naam set karna
+            let subCat = item.historyList[j].cat || 'other';
+            let subIcon = '💰'; 
+            let catName = 'Other/Anya';
+
+            if (subCat === 'market') { subIcon = '🛒'; catName = 'Market/Sabji'; }
+            if (subCat === 'food') { subIcon = '🍔'; catName = 'Food/Canteen'; }
+            if (subCat === 'travel') { subIcon = '🚌'; catName = 'Travel/Petrol'; }
+            if (subCat === 'education') { subIcon = '📚'; catName = 'College/Books'; }
+
+            historyHTML = historyHTML + `
+                <div class="sub-item">
+                    <div class="sub-item-left">
+                        <span style="font-size: 18px;">${subIcon}</span>
+                        <div class="sub-text-group">
+                            <span class="sub-cat-name">${catName}</span>
+                            <span class="sub-time">${item.historyList[j].time}</span>
+                        </div>
+                    </div>
+                    <strong>₹${item.historyList[j].paisa}</strong>
+                </div>
+            `;
+        }
+
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <div class="item-main">
+                <div class="item-left">
+                    <span class="item-icon">${mainIcon}</span>
+                    <strong>${item.asliNaam} <span class="item-count">(${item.historyList.length} Items)</span></strong>
+                </div>
+                <span class="item-total">Total: ₹${item.totalPaisa}</span>
+            </div>
+            
+            <div class="item-history-box">
+                ${historyHTML}
+            </div>
+        `;
+        
+        expenseList.appendChild(li); 
+    }
+
+    totalAmountSpan.innerText = overallTotal;
 }
 
-// 3. Jab 'Add Expense' button dabaya jaye
 form.addEventListener('submit', function(event) {
-    event.preventDefault(); // Page reload hone se rokna
+    event.preventDefault(); 
 
     const nameValue = expenseName.value;
-    const amountValue = Number(expenseAmount.value); // Text ko number me badalna
+    const categoryValue = expenseCategory.value; 
+    const amountValue = Number(expenseAmount.value); 
 
-    // Ek object banana jisme naam aur paise hon
+    const now = new Date();
+    const fullDisplayTime = now.toLocaleDateString('en-IN') + " | " + now.toLocaleTimeString('en-IN', {hour: '2-digit', minute:'2-digit'});
+    
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const monthYearValue = year + "-" + month;
+
     const newRecord = {
         name: nameValue,
-        amount: amountValue
+        category: categoryValue,
+        amount: amountValue,
+        time: fullDisplayTime,       
+        monthYear: monthYearValue    
     };
 
-    // Us object ko apne array me daal dena
     expenses.push(newRecord);
-
-    // 4. Data ko Local Storage me save karna
-    // JSON.stringify array ko text me badal deta hai kyunki storage me sirf text save hota hai
     localStorage.setItem('myExpenses', JSON.stringify(expenses));
 
-    // Form ke dabbe khali karna naye kharche ke liye
     expenseName.value = '';
     expenseAmount.value = '';
-
-    // Screen ko naye data ke sath update karna
+    
     showData();
 });
 
-// Pehli baar website open hone par ye function chalega taaki purana data dikh jaye
+monthFilterInput.addEventListener('change', function() {
+    showData();
+});
+
 showData();
