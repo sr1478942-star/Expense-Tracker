@@ -15,8 +15,9 @@ The existing GitHub Actions workflow at `.github/workflows/deploy.yml` is config
    ```
 3. Configure environment variables in `.env`:
    ```text
-   REDIS_URL=redis://127.0.0.1:6379
-   API_KEY=A2mle31pbt8ue4s30jy7jx6ibxzlswyaks35sn0d4byp1830vr
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_ANON_KEY=your-anon-key-here
+   API_KEY=S5h9hafr9p42ghvlidpfudzk5hcbydh7yx2iraa4gie5iyguuz6
    ```
 4. Start the backend server:
    ```powershell
@@ -24,10 +25,14 @@ The existing GitHub Actions workflow at `.github/workflows/deploy.yml` is config
    ```
 5. Use the backend by setting `USE_BACKEND = true` in `script.js`.
 
-## Redis Notes
-- The backend stores users, expenses, and income in Redis.
+## Supabase Notes
+- The backend stores users, expenses, and income in Supabase PostgreSQL.
 - The `API_KEY` is required for all `/api` requests.
-- If Redis is not available, the app still works locally using browser `localStorage`.
+- If Supabase is not available, the app still works locally using browser `localStorage`.
+- Create tables in Supabase:
+  - `users`: email (text primary), password (text)
+  - `expenses`: email (text foreign), data (jsonb)
+  - `income`: email (text foreign), amount (numeric)
 
 ## GitHub Pages Deployment
 - The static frontend is deployed from the repository root.

@@ -1,22 +1,33 @@
 const express = require('express');
 const cors = require('cors');
-const { createClient } = require('redis');
+const { createClient } = require('@supabase/supabase-js');
+const { Client } = require('pg');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT || 3000);
+let currentPort = PORT;
 const API_KEY = process.env.API_KEY;
-const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_DB_URL = process.env.SUPABASE_DB_URL;
 const SEED_EMAIL = 'sandeep@gmail.com';
 const SEED_PASS = '12345';
 
-const redisClient = createClient({ url: REDIS_URL });
-redisClient.on('error', err => console.error('Redis Client Error', err));
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-(async () => {
-  await redisClient.connect();
-  console.log('Connected to Redis');
-})();
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit the process, just log the error
+});
+
+// Validate Supabase configuration
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('Error: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env');
+  process.exit(1);
+}
 
 app.use(cors());
 app.use(express.json());
@@ -35,35 +46,98 @@ function requireApiKey(req, res, next) {
 
 app.use('/api', requireApiKey);
 
-const getUserKey = email => `user:${email}`;
-const getExpensesKey = email => `expenses:${email}`;
-const getIncomeKey = email => `income:${email}`;
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'Supabase backend is running',
+    port: currentPort,
+    api: '/api/health or /api/auth/login'
+  });
+});
+
+app.post('/api/setup', async (req, res) => {
+  try {
+    const client = new Client({ connectionString: SUPABASE_DB_URL });
+    await client.connect();
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        email TEXT PRIMARY KEY,
+        password TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS expenses (
+        email TEXT REFERENCES users(email) ON DELETE CASCADE,
+        data JSONB DEFAULT '[]'::jsonb,
+        PRIMARY KEY (email)
+      );
+      CREATE TABLE IF NOT EXISTS income (
+        email TEXT REFERENCES users(email) ON DELETE CASCADE,
+        amount NUMERIC DEFAULT 0,
+        PRIMARY KEY (email)
+      );
+      ALTER TABLE users DISABLE ROW LEVEL SECURITY;
+      ALTER TABLE expenses DISABLE ROW LEVEL SECURITY;
+      ALTER TABLE income DISABLE ROW LEVEL SECURITY;
+      CREATE POLICY "Allow all users" ON users FOR ALL USING (true);
+      CREATE POLICY "Allow all expenses" ON expenses FOR ALL USING (true);
+      CREATE POLICY "Allow all income" ON income FOR ALL USING (true);
+    `);
+    await client.end();
+    res.json({ message: 'Tables created successfully' });
+  } catch (err) {
+    console.error('Setup error:', err);
+    res.status(500).json({ error: 'Failed to create tables' });
+  }
+});
 
 async function getUser(email) {
-  const raw = await redisClient.get(getUserKey(email));
-  return raw ? JSON.parse(raw) : null;
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data ? { email: data.email, password: data.password } : null;
 }
 
 async function setUser(user) {
-  await redisClient.set(getUserKey(user.email), JSON.stringify(user));
+  const { error } = await supabase
+    .from('users')
+    .upsert({ email: user.email, password: user.password });
+  if (error) throw error;
 }
 
 async function getExpenses(email) {
-  const raw = await redisClient.get(getExpensesKey(email));
-  return raw ? JSON.parse(raw) : [];
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('data')
+    .eq('email', email)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data ? data.data : [];
 }
 
 async function setExpenses(email, expenses) {
-  await redisClient.set(getExpensesKey(email), JSON.stringify(expenses));
+  const { error } = await supabase
+    .from('expenses')
+    .upsert({ email, data: expenses });
+  if (error) throw error;
 }
 
 async function getIncome(email) {
-  const raw = await redisClient.get(getIncomeKey(email));
-  return raw ? Number(raw) : 0;
+  const { data, error } = await supabase
+    .from('income')
+    .select('amount')
+    .eq('email', email)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data ? Number(data.amount) : 0;
 }
 
 async function setIncome(email, income) {
-  await redisClient.set(getIncomeKey(email), String(income));
+  const { error } = await supabase
+    .from('income')
+    .upsert({ email, amount: income });
+  if (error) throw error;
 }
 
 app.get('/api/health', (req, res) => {
@@ -155,6 +229,21 @@ app.post('/api/restore', async (req, res) => {
   res.json({ email, expenses: await getExpenses(email), income: await getIncome(email) });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+function startServer(port) {
+  currentPort = port;
+  const server = app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+
+  server.on('error', err => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Port ${port} is already in use. Trying port ${port + 1} instead.`);
+      startServer(port + 1);
+      return;
+    }
+    console.error('Server error:', err);
+    process.exit(1);
+  });
+}
+
+startServer(PORT);
