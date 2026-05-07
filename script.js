@@ -52,6 +52,12 @@ async function postExpensesAPI(email, expense = null, expenses = null, incomes =
     });
 }
 
+// === GLOBAL VARIABLES ===
+let usersDB = JSON.parse(localStorage.getItem('expenseAppUsers')) || []; 
+let currentUserEmail = localStorage.getItem('currentUserEmail');
+let expenses = []; let incomes = [];
+let currentDashFilter = 'all'; let currentHistoryTab = 'expense';
+
 // --- ELEMENTS ---
 const authScreen = document.getElementById('auth-screen');
 const mainAppScreen = document.getElementById('main-app-screen');
@@ -196,7 +202,6 @@ window.restoreData = function() {
 };
 
 // --- AUTH LOGIC ---
-if (currentUserEmail) { showAppScreen(); } else { showAuthScreen(); }
 window.toggleAuthMode = function() {
     isLoginMode = !isLoginMode;
     authTitle.innerText = isLoginMode ? "Please Login to continue" : "Create a New Account";
@@ -494,3 +499,6 @@ form.addEventListener('submit', function(e) {
 
 searchDateInput.addEventListener('input', showData); searchLocInput.addEventListener('input', showData);
 function googleTranslateElementInit() { new google.translate.TranslateElement({pageLanguage: 'en'}, 'google_translate_element'); }
+
+// === INITIALIZE APP ===
+if (currentUserEmail) { showAppScreen(); } else { showAuthScreen(); }
