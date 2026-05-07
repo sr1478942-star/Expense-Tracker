@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expense Tracker Pro</title>
+    <title>Expense Tracker Pro Max Ultra</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,22 +13,15 @@
             <div class="ex-logo auth-logo">EX</div>
             <h2>Expense Tracker</h2>
             <p id="auth-title">Please Login to continue</p>
-            
             <form id="auth-form">
-                <input type="email" id="auth-email" placeholder="Email Address" required>
-                <input type="password" id="auth-password" placeholder="Password" required>
-                
+                <input type="email" id="auth-email" placeholder="" required>
+                <input type="password" id="auth-password" placeholder="" required>
                 <div id="forgot-pw-container" style="text-align: right; margin-bottom: 15px;">
                     <span id="forgot-pw-link" style="color:#e74c3c; cursor:pointer; font-size: 12px; font-weight: bold;" onclick="resetPassword()">Forgot Password?</span>
                 </div>
-
                 <button type="submit" class="btn" id="auth-btn">Login</button>
             </form>
-            
-            <p class="auth-switch">
-                Naya Account banayein? <span id="switch-to-signup" style="color:#3498db; cursor:pointer;" onclick="toggleAuthMode()">Sign Up</span>
-            </p>
-            
+            <p class="auth-switch">Naya Account banayein? <span id="switch-to-signup" style="color:#3498db; cursor:pointer;" onclick="toggleAuthMode()">Sign Up</span></p>
             <button class="theme-btn" onclick="toggleDarkMode()" style="margin-top: 20px; width: 40px; height: 40px;" title="Dark Mode">🌙</button>
         </div>
     </div>
@@ -47,53 +40,66 @@
                 <div class="dashboard-wrapper">
                     <div class="wallet-card balance-card"><span class="label">💰 Bacha Hua Paisa</span><h2 id="display-balance">₹0</h2></div>
                     <div class="wallet-split">
-                        <div class="wallet-card income-card" onclick="updateIncome()" title="Paisa daalne ke liye click karein"><span class="label">🏦 Total Paisa</span><h3 id="display-income">₹0</h3></div>
-                        <div class="wallet-card expense-card"><span class="label">📉 Kharcha</span><h3 id="display-expense">₹0</h3></div>
+                        <div class="wallet-card income-card" onclick="openIncomeModal()" title="Paisa Add Karein">
+                            <span class="label">🏦 Total Aamdani <span style="font-size: 10px;">(➕ Add)</span></span>
+                            <h3 id="display-income">₹0</h3>
+                        </div>
+                        <div class="wallet-card expense-card">
+                            <span class="label">📉 Total Kharcha</span>
+                            <h3 id="display-expense">₹0</h3>
+                        </div>
                     </div>
-                    <div class="chips-container">
+                    
+                    <div class="chips-container" id="auto-scroll-chips">
                         <div class="chips-scroll">
                             <button class="chip active" onclick="setDashFilter('all', this)">Sabhi (All)</button>
                             <button class="chip" onclick="setDashFilter('today', this)">📅 Aaj</button>
                             <button class="chip" onclick="setDashFilter('month', this)">📅 Is Mahine</button>
                             <button class="chip" onclick="setDashFilter('year', this)">📅 Is Saal</button>
-                            <button class="chip" onclick="setDashFilter('market', this)">🛒 Sabji</button>
+                            <button class="chip" onclick="setDashFilter('sabji', this)">🥦 Sabji/Ration</button>
                             <button class="chip" onclick="setDashFilter('food', this)">🍔 Food</button>
                             <button class="chip" onclick="setDashFilter('travel', this)">🚌 Travel</button>
+                            <button class="chip" onclick="setDashFilter('recharge', this)">📱 Recharge</button>
                         </div>
                     </div>
                 </div>
 
                 <form id="expense-form">
                     <div class="form-control">
-                        <label for="expense-name">📍 Location / Kahan kharida?</label>
-                        <input type="text" id="expense-name" list="location-options" placeholder="e.g. Lar Bajar, Nakatia" required>
+                        <label>📍 Kahan kharida? (Location)</label>
+                        <input type="text" id="expense-name" list="location-options" placeholder="" required>
                         <datalist id="location-options"></datalist>
                     </div>
                     <div class="form-control">
-                        <label for="expense-category">🛍️ Item / Kya kharida?</label>
-                        <select id="expense-category" required>
-                            <option value="market">🛒 Market / Sabji</option>
-                            <option value="food">🍔 Food / Canteen</option>
-                            <option value="travel">🚌 Travel / Petrol</option>
-                            <option value="education">📚 College / Books</option>
-                            <option value="other">💰 Other / Anya</option>
-                        </select>
+                        <label>🛍️ Kya kharida? (Type anything & get auto Emoji)</label>
+                        <input type="text" id="expense-category" list="cat-options" placeholder="" required>
+                        <datalist id="cat-options">
+                            <option value="Sabji / Vegetables">
+                            <option value="Khana / Food / Canteen">
+                            <option value="Petrol / Travel / Bus">
+                            <option value="College Fee / Books">
+                            <option value="Mobile Recharge / Wifi">
+                            <option value="Shopping / Kapde">
+                            <option value="Dawa / Medicine">
+                        </datalist>
                     </div>
                     <div class="form-control">
-                        <label for="expense-amount">💵 Kitne paise lage?</label>
-                        <input type="number" id="expense-amount" placeholder="e.g. 150" required>
+                        <label>💵 Kitne paise lage?</label>
+                        <input type="number" id="expense-amount" placeholder="" required>
                     </div>
                     <button type="submit" class="btn">Add Expense</button>
                 </form>
             </div>
 
             <div id="page-history" class="page">
+                <div class="history-toggle">
+                    <button id="tab-exp" class="active" onclick="switchHistoryTab('expense')">📉 Kharcha History</button>
+                    <button id="tab-inc" onclick="switchHistoryTab('income')">🏦 Aamdani History</button>
+                </div>
                 <div class="search-box">
-                    <h4>🔍 Advanced Search</h4>
                     <div class="search-inputs">
-                        <input type="date" id="search-date" title="Calendar se date chunein">
-                        <input type="text" id="search-loc" placeholder="📍 Location search karein...">
-                        <input type="text" id="search-item" placeholder="🛍️ Category/Item search karein...">
+                        <input type="date" id="search-date">
+                        <input type="text" id="search-loc" placeholder="">
                     </div>
                 </div>
                 <ul id="expense-list" class="list"></ul>
@@ -101,11 +107,8 @@
 
             <div id="page-menu" class="page">
                 <div class="menu-container">
-                    <h3>👤 Profile & Settings</h3>
-                    <div class="setting-item">
-                        <label>Logged in as:</label>
-                        <p id="display-user-email" style="font-weight:bold; color:#2ecc71; margin-top: 5px;"></p>
-                    </div>
+                    <h3>👤 Settings & Backup</h3>
+                    <p id="display-user-email" style="font-weight:bold; color:#2ecc71; margin: 10px 0;"></p>
                     
                     <div style="background: var(--input-bg); padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid var(--border-color);">
                         <h4 style="margin-bottom: 10px; font-size: 14px;">🗄️ Data Backup (Safe Rakhein)</h4>
@@ -113,15 +116,9 @@
                         <button class="btn" style="background:#9b59b6;" onclick="restoreData()">📂 Restore Data (Upload)</button>
                     </div>
 
-                    <div class="setting-item">
-                        <label>🌐 Bhasha (Language):</label>
-                        <div id="google_translate_element" style="margin-top: 10px;"></div>
-                    </div>
-
-                    <div class="setting-item" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
-                        <button class="btn" style="background:#f39c12; margin-bottom:10px;" onclick="logoutUser()">🚪 Logout</button>
-                        <button class="danger-btn" onclick="clearAllData()">🗑️ Mera Saara Data Delete Karein</button>
-                    </div>
+                    <div id="google_translate_element" style="margin: 15px 0;"></div>
+                    <button class="btn" style="background:#f39c12; margin-bottom:10px;" onclick="logoutUser()">🚪 Logout</button>
+                    <button class="danger-btn" onclick="clearAllData()">🗑️ Clear Saara Data</button>
                 </div>
             </div>
         </main>
@@ -133,11 +130,24 @@
         </footer>
     </div>
 
-    <script type="text/javascript">
-        function googleTranslateElementInit() {
-            new google.translate.TranslateElement({pageLanguage: 'en'}, 'google_translate_element');
-        }
-    </script>
+    <div id="income-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>🏦 Naya Paisa Add Karein</h3>
+            <div class="form-control" style="margin-top: 15px;">
+                <label>Paisa kahan se aaya? (Source)</label>
+                <input type="text" id="income-source" placeholder="" required>
+            </div>
+            <div class="form-control">
+                <label>Kitne ₹ aaye?</label>
+                <input type="number" id="income-amount" placeholder="" required>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn" style="background: var(--text-soft);" onclick="closeIncomeModal()">Cancel</button>
+                <button class="btn" onclick="submitIncome()">Add Paisa</button>
+            </div>
+        </div>
+    </div>
+
     <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
     <script src="script.js"></script>
 </body>
