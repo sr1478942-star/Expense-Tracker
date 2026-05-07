@@ -1,123 +1,96 @@
+/* COLOR VARIABLES */
+:root {
+    --bg-color: #f0f2f5; --card-bg: #ffffff; --text-main: #333333;
+    --text-soft: #777777; --header-bg: #ffffff; --input-bg: #f9f9f9;
+    --border-color: #dddddd; --shadow: rgba(0, 0, 0, 0.05);
+}
+
+/* DARK MODE OVERRIDES */
+body.dark-mode {
+    --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #e0e0e0;
+    --text-soft: #aaaaaa; --header-bg: #1e1e1e; --input-bg: #2d2d2d;
+    --border-color: #333333; --shadow: rgba(0, 0, 0, 0.4);
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f6f8;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
+body { 
+    font-family: Arial, sans-serif; background-color: var(--bg-color); color: var(--text-main);
+    height: 100vh; display: flex; flex-direction: column; transition: background 0.3s, color 0.3s;
+    max-width: 800px; margin: 0 auto; position: relative; box-shadow: 0 0 20px var(--shadow);
 }
 
-.container {
-    background-color: #fff;
-    padding: 20px 30px;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    width: 90%; 
-    max-width: 450px; 
-}
+.auth-container { flex: 1; display: flex; justify-content: center; align-items: center; padding: 20px; }
+.auth-box { background: var(--card-bg); padding: 30px 20px; border-radius: 10px; width: 100%; max-width: 400px; box-shadow: 0 4px 10px var(--shadow); text-align: center; margin: 0 auto; }
+.auth-logo { background: rgba(46, 204, 113, 0.2); color: #2ecc71; width: 50px; margin: 0 auto 10px auto; font-size: 24px; padding: 10px; border-radius: 6px;}
+.auth-box input { background-color: var(--input-bg); color: var(--text-main); border: 1px solid var(--border-color); width: 100%; padding: 12px; border-radius: 6px; margin-bottom: 15px;}
 
-h2 { text-align: center; margin-bottom: 20px; color: #333; }
-.balance-container { text-align: center; margin-bottom: 20px; }
-.overall-total { font-size: 24px; color: #e74c3c; margin-bottom: 15px; }
+.app-header { display: flex; justify-content: space-between; align-items: center; background-color: var(--header-bg); padding: 10px 15px; box-shadow: 0 2px 5px var(--shadow); position: fixed; top: 0; z-index: 100; width: 100%; max-width: 800px; left: 0; right: 0; margin: 0 auto; }
+.header-left { display: flex; align-items: center; gap: 10px; }
+.ex-logo { background: rgba(46, 204, 113, 0.2); border: 1px solid rgba(46, 204, 113, 0.5); color: #27ae60; font-weight: bold; font-size: 18px; padding: 5px 8px; border-radius: 6px; }
+.theme-btn, .login-btn { background: var(--input-bg); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 50%; width: 35px; height: 35px; font-size: 16px; cursor: pointer; margin-right: 5px; transition: 0.3s; }
 
-.month-filter-box {
-    background-color: #eaf2f8;
-    padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #d4e6f1;
-}
+.app-body { flex: 1; overflow-y: auto; padding: 70px 15px 80px 15px; width: 100%; }
+.page { display: none; }
+.page.active { display: block; animation: fadeIn 0.3s; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-.month-filter-box label { font-size: 13px; color: #333; font-weight: bold;}
-h3 { margin-bottom: 10px; border-bottom: 1px solid #bbb; padding-bottom: 5px; }
+.dashboard-wrapper { background: var(--card-bg); padding: 15px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 4px var(--shadow); }
+.wallet-card { padding: 10px; border-radius: 8px; background: var(--input-bg); text-align: center; }
+.balance-card { background: #2c3e50; color: white; margin-bottom: 10px; padding: 15px; }
+.wallet-split { display: flex; gap: 10px; }
+.wallet-split .wallet-card { flex: 1; border: 1px solid var(--border-color); }
+.income-card { background-color: rgba(46, 204, 113, 0.1) !important; color: #2ecc71; cursor: pointer; transition: 0.2s; }
+.income-card:hover { background-color: rgba(46, 204, 113, 0.2) !important; }
+.expense-card { background-color: rgba(231, 76, 60, 0.1) !important; color: #e74c3c; }
+.chips-container { margin-top: 15px; overflow-x: auto; scrollbar-width: none; }
+.chips-container::-webkit-scrollbar { display: none; }
+.chips-scroll { display: flex; gap: 8px; }
+.chip { padding: 6px 12px; background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 20px; font-size: 12px; color: var(--text-main); cursor: pointer; white-space: nowrap; }
+.chip.active { background: #2ecc71; color: white; border-color: #2ecc71; font-weight: bold;}
+
+#expense-form, .search-box, .menu-container { background: var(--card-bg); padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px var(--shadow); margin-bottom: 20px; }
 .form-control { margin-bottom: 15px; }
-label { display: inline-block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 13px; color: var(--text-main);}
+input, select { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 14px; background-color: var(--input-bg); color: var(--text-main); }
+.btn { width: 100%; background-color: #2ecc71; color: white; padding: 12px; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; }
+.danger-btn { background: #e74c3c; color: white; border: none; padding: 10px; border-radius: 6px; width: 100%; cursor: pointer; font-weight: bold; }
 
-input[type="text"], input[type="number"], input[type="month"], select {
-    width: 100%; padding: 10px; border: 1px solid #ccc;
-    border-radius: 4px; font-size: 14px; background-color: white;
-}
-
-.btn {
-    width: 100%; background-color: #2ecc71; color: white;
-    padding: 10px; border: none; border-radius: 4px;
-    font-size: 16px; cursor: pointer; font-weight: bold; margin-bottom: 20px;
-}
-.btn:hover { background-color: #27ae60; }
+.search-box h4 { margin-bottom: 10px; color: var(--text-main); font-size: 14px; }
+.search-inputs { display: flex; flex-direction: column; gap: 8px; }
 
 .list { list-style-type: none; }
-
-.list li {
-    background-color: #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    color: #333;
-    display: flex;
-    flex-direction: column; 
-    padding: 10px;
-    margin-bottom: 15px;
-    border-right: 5px solid #2ecc71; 
-    border-radius: 5px;
-}
-
-/* NAYA: Clickable effect ke liye */
-.item-main {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    cursor: pointer; /* Hath wala icon aayega */
-    padding: 5px;
-    border-radius: 5px;
-    transition: 0.3s;
-}
-
-.item-main:hover {
-    background-color: #f1f8ff; /* Hover karne pe halka neela rang aayega */
-}
-
+.list li { background-color: var(--card-bg); box-shadow: 0 1px 3px var(--shadow); display: flex; flex-direction: column; padding: 10px; margin-bottom: 15px; border-right: 5px solid #2ecc71; border-radius: 8px; color: var(--text-main); }
+.item-main { display: flex; justify-content: space-between; align-items: center; width: 100%; cursor: pointer; padding: 5px; border-radius: 5px; transition: 0.3s; }
+.item-main:hover { background-color: rgba(46, 204, 113, 0.1); }
 .item-left { display: flex; align-items: center; }
-.item-icon { font-size: 24px; margin-right: 12px; }
-
-.item-count { font-size: 12px; color: #888; font-weight: normal; margin-left: 5px; }
-.item-total { font-weight: bold; color: #c0392b; font-size: 16px; }
-
-.item-history-box {
-    width: 100%; background-color: #f9f9f9; margin-top: 10px;
-    padding: 8px; border-radius: 4px; border-left: 3px solid #3498db;
-}
-
-.sub-item {
-    margin-bottom: 8px; border-bottom: 1px dashed #ddd;
-    padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center;
-}
+.item-icon { font-size: 20px; margin-right: 10px; }
+.item-count { font-size: 12px; color: var(--text-soft); font-weight: normal; margin-left: 5px; }
+.item-total { font-weight: bold; color: #e74c3c; font-size: 15px; }
+.item-history-box { background-color: var(--input-bg); margin-top: 10px; padding: 8px; border-radius: 6px; border-left: 3px solid #3498db; }
+.sub-item { margin-bottom: 8px; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
 .sub-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.sub-item-left { display: flex; align-items: center; gap: 8px; }
+.sub-cat-name { font-size: 13px; font-weight: bold; color: var(--text-main); }
+.sub-time { font-size: 11px; color: var(--text-soft); margin-top: 2px; display: block; }
+.sub-item-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; font-size: 14px;}
+.action-buttons { display: flex; gap: 5px; }
+.edit-btn, .delete-btn { cursor: pointer; font-size: 12px; padding: 4px; border-radius: 4px; background-color: var(--header-bg); border: 1px solid var(--border-color); transition: 0.2s; color: var(--text-main); }
 
-.sub-item-left { display: flex; align-items: center; gap: 10px; }
-.sub-text-group { display: flex; flex-direction: column; }
-.sub-cat-name { font-size: 13px; font-weight: bold; color: #444; }
-.sub-time { font-size: 11px; color: #777; margin-top: 2px; }
-/* --- NAYA: Edit aur Delete Buttons ka Design --- */
-.sub-item-right {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 5px;
+.bottom-nav { display: flex; justify-content: space-around; background-color: var(--header-bg); padding: 10px 0; box-shadow: 0 -2px 10px var(--shadow); position: fixed; bottom: 0; z-index: 100; width: 100%; max-width: 800px; left: 0; right: 0; margin: 0 auto; }
+.nav-btn { background: none; border: none; display: flex; flex-direction: column; align-items: center; color: var(--text-soft); cursor: pointer; flex: 1; transition: 0.2s; }
+.nav-btn.active { color: #2ecc71; }
+.nav-icon { font-size: 20px; margin-bottom: 3px; }
+
+.hidden-screen { display: none !important; }
+body { top: 0 !important; }
+.skiptranslate iframe { display: none !important; }
+
+/* RESPONSIVE DESIGN FOR LAPTOP/TABLET */
+@media (min-width: 650px) {
+    #expense-form { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: center; }
+    .form-control { margin-bottom: 0; }
+    #expense-form .btn { grid-column: span 2; margin-top: 10px; }
+    .search-inputs { flex-direction: row; }
+    .search-inputs input { flex: 1; }
 }
-
-.action-buttons {
-    display: flex;
-    gap: 10px;
-}
-
-.edit-btn, .delete-btn {
-    cursor: pointer;
-    font-size: 14px;
-    padding: 3px 5px;
-    border-radius: 4px;
-    background-color: #eee;
-    transition: 0.2s;
-}
-
-.edit-btn:hover { background-color: #f1c40f; color: white; }
-.delete-btn:hover { background-color: #e74c3c; color: white; }
