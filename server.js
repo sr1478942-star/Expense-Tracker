@@ -71,7 +71,7 @@ app.post('/api/setup', async (req, res) => {
       );
       CREATE TABLE IF NOT EXISTS income (
         email TEXT REFERENCES users(email) ON DELETE CASCADE,
-        amount NUMERIC DEFAULT 0,
+        data JSONB DEFAULT '[]'::jsonb,
         PRIMARY KEY (email)
       );
       ALTER TABLE users DISABLE ROW LEVEL SECURITY;
@@ -126,17 +126,17 @@ async function setExpenses(email, expenses) {
 async function getIncome(email) {
   const { data, error } = await supabase
     .from('income')
-    .select('amount')
+    .select('data')
     .eq('email', email)
     .single();
   if (error && error.code !== 'PGRST116') throw error;
-  return data ? Number(data.amount) : 0;
+  return data ? data.data : [];
 }
 
 async function setIncome(email, income) {
   const { error } = await supabase
     .from('income')
-    .upsert({ email, amount: income });
+    .upsert({ email, data: income });
   if (error) throw error;
 }
 
@@ -172,7 +172,7 @@ app.post('/api/auth/signup', async (req, res) => {
   }
   await setUser({ email, password });
   await setExpenses(email, []);
-  await setIncome(email, 0);
+  await setIncome(email, []);
   res.status(201).json({ email });
 });
 
@@ -182,12 +182,12 @@ app.get('/api/expenses', async (req, res) => {
     return res.status(400).json({ error: 'Email query parameter is required.' });
   }
   const expenses = await getExpenses(email);
-  const income = await getIncome(email);
-  res.json({ email, expenses, income });
+  const incomes = await getIncome(email);
+  res.json({ email, expenses, incomes });
 });
 
 app.post('/api/expenses', async (req, res) => {
-  const { email, expense, income } = req.body || {};
+  const { email, expense, expenses, incomes } = req.body || {};
   if (!email) {
     return res.status(400).json({ error: 'Email is required.' });
   }
@@ -196,10 +196,13 @@ app.post('/api/expenses', async (req, res) => {
     list.push(expense);
     await setExpenses(email, list);
   }
-  if (typeof income !== 'undefined') {
-    await setIncome(email, income);
+  if (Array.isArray(expenses)) {
+    await setExpenses(email, expenses);
   }
-  res.json({ email, expenses: await getExpenses(email), income: await getIncome(email) });
+  if (Array.isArray(incomes)) {
+    await setIncome(email, incomes);
+  }
+  res.json({ email, expenses: await getExpenses(email), incomes: await getIncome(email) });
 });
 
 app.post('/api/backup', async (req, res) => {
@@ -210,23 +213,23 @@ app.post('/api/backup', async (req, res) => {
   const backup = {
     user: await getUser(email),
     expenses: await getExpenses(email),
-    income: await getIncome(email)
+    incomes: await getIncome(email)
   };
   res.json(backup);
 });
 
 app.post('/api/restore', async (req, res) => {
-  const { email, expenses, income } = req.body || {};
+  const { email, expenses, incomes } = req.body || {};
   if (!email) {
     return res.status(400).json({ error: 'Email is required.' });
   }
   if (Array.isArray(expenses)) {
     await setExpenses(email, expenses);
   }
-  if (typeof income !== 'undefined') {
-    await setIncome(email, income);
+  if (Array.isArray(incomes)) {
+    await setIncome(email, incomes);
   }
-  res.json({ email, expenses: await getExpenses(email), income: await getIncome(email) });
+  res.json({ email, expenses: await getExpenses(email), incomes: await getIncome(email) });
 });
 
 function startServer(port) {

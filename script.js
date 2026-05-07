@@ -1,10 +1,56 @@
 // === 👑 1. MASTER / SEED LOGIN ===
 const SEED_EMAIL = "sandeep@gmail.com"; const SEED_PASS = "12345";
 
-let usersDB = JSON.parse(localStorage.getItem('expenseAppUsers')) || []; 
-let currentUserEmail = localStorage.getItem('currentUserEmail'); 
-let expenses = []; let incomes = [];
-let currentDashFilter = 'all'; let currentHistoryTab = 'expense';
+// === 🔧 BACKEND CONFIG ===
+const USE_BACKEND = true;
+const API_BASE = USE_BACKEND ? 'https://expense-tracker-zzmv.onrender.com' : '';
+const API_KEY = 'sb_publishable_z6eqo1yYTyFI3Y0vWqlZzA_MLGp6tdJ';
+
+// === 🌐 BACKEND API FUNCTIONS ===
+async function apiRequest(endpoint, options = {}) {
+    const url = `${API_BASE}${endpoint}`;
+    const headers = {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        ...options.headers
+    };
+    const response = await fetch(url, { ...options, headers });
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Network error' }));
+        throw new Error(error.error || 'API error');
+    }
+    return response.json();
+}
+
+async function loginUserAPI(email, password) {
+    return apiRequest('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password })
+    });
+}
+
+async function signupUserAPI(email, password) {
+    return apiRequest('/api/auth/signup', {
+        method: 'POST',
+        body: JSON.stringify({ email, password })
+    });
+}
+
+async function getExpensesAPI(email) {
+    const data = await apiRequest(`/api/expenses?email=${encodeURIComponent(email)}`);
+    return { expenses: data.expenses || [], incomes: data.incomes || [] };
+}
+
+async function postExpensesAPI(email, expense = null, expenses = null, incomes = null) {
+    const body = { email };
+    if (expense) body.expense = expense;
+    if (expenses) body.expenses = expenses;
+    if (incomes) body.incomes = incomes;
+    return apiRequest('/api/expenses', {
+        method: 'POST',
+        body: JSON.stringify(body)
+    });
+}
 
 // --- ELEMENTS ---
 const authScreen = document.getElementById('auth-screen');
@@ -177,15 +223,32 @@ authForm.addEventListener('submit', function(e) {
     const email = document.getElementById('auth-email').value.trim().toLowerCase();
     const password = document.getElementById('auth-password').value.trim();
     if (isLoginMode) {
-        if (email === SEED_EMAIL && password === SEED_PASS) { window.loginUser(email); return; }
-        let user = usersDB.find(u => u.email === email && u.password === password);
-        if (user) window.loginUser(email); else alert("❌ Galat Email ya Password!");
+        if (USE_BACKEND) {
+            loginUserAPI(email, password).then(() => {
+                window.loginUser(email);
+            }).catch(err => {
+                alert("❌ " + err.message);
+            });
+        } else {
+            if (email === SEED_EMAIL && password === SEED_PASS) { window.loginUser(email); return; }
+            let user = usersDB.find(u => u.email === email && u.password === password);
+            if (user) window.loginUser(email); else alert("❌ Galat Email ya Password!");
+        }
     } else {
-        if (email === SEED_EMAIL) return alert("❌ Master ID se signup nahi hota.");
-        if (usersDB.find(u => u.email === email)) alert("❌ Email already registered!");
-        else {
-            usersDB.push({ email, password }); localStorage.setItem('expenseAppUsers', JSON.stringify(usersDB));
-            alert("🎉 Account ban gaya!"); window.loginUser(email);
+        if (USE_BACKEND) {
+            signupUserAPI(email, password).then(() => {
+                alert("🎉 Account ban gaya!");
+                window.loginUser(email);
+            }).catch(err => {
+                alert("❌ " + err.message);
+            });
+        } else {
+            if (email === SEED_EMAIL) return alert("❌ Master ID se signup nahi hota.");
+            if (usersDB.find(u => u.email === email)) alert("❌ Email already registered!");
+            else {
+                usersDB.push({ email, password }); localStorage.setItem('expenseAppUsers', JSON.stringify(usersDB));
+                alert("🎉 Account ban gaya!"); window.loginUser(email);
+            }
         }
     }
 });
@@ -196,13 +259,31 @@ function showAppScreen() { authScreen.classList.replace('active-screen', 'hidden
 
 // --- CORE APP LOGIC ---
 function loadUserData() {
-    expenses = JSON.parse(localStorage.getItem('expensesDB_' + currentUserEmail)) || [];
-    incomes = JSON.parse(localStorage.getItem('incomeHistoryDB_' + currentUserEmail)) || []; 
-    updateDashboard(); showData();
+    if (USE_BACKEND) {
+        getExpensesAPI(currentUserEmail).then(data => {
+            expenses = data.expenses;
+            incomes = data.incomes;
+            updateDashboard(); showData();
+        }).catch(err => {
+            console.error('Failed to load data:', err);
+            alert('Failed to load data from server.');
+        });
+    } else {
+        expenses = JSON.parse(localStorage.getItem('expensesDB_' + currentUserEmail)) || [];
+        incomes = JSON.parse(localStorage.getItem('incomeHistoryDB_' + currentUserEmail)) || []; 
+        updateDashboard(); showData();
+    }
 }
 function saveUserData() {
-    localStorage.setItem('expensesDB_' + currentUserEmail, JSON.stringify(expenses));
-    localStorage.setItem('incomeHistoryDB_' + currentUserEmail, JSON.stringify(incomes));
+    if (USE_BACKEND) {
+        postExpensesAPI(currentUserEmail, null, incomes).catch(err => {
+            console.error('Failed to save incomes:', err);
+            alert('Failed to save incomes to server.');
+        });
+    } else {
+        localStorage.setItem('expensesDB_' + currentUserEmail, JSON.stringify(expenses));
+        localStorage.setItem('incomeHistoryDB_' + currentUserEmail, JSON.stringify(incomes));
+    }
 }
 
 window.openIncomeModal = function() { incomeModal.classList.add('active'); }
@@ -331,9 +412,22 @@ window.fillForm = function(name) { expenseName.value = name; expenseCategory.foc
 
 window.deleteRecord = function(id, type) {
     if (confirm("Sach mein delete karna chahte hain?")) {
-        if(type === 'expense') expenses = expenses.filter(e => e.id !== id);
-        else incomes = incomes.filter(i => i.id !== id);
-        saveUserData(); updateDashboard(); showData();
+        if(type === 'expense') {
+            expenses = expenses.filter(e => e.id !== id);
+            if (USE_BACKEND) {
+                postExpensesAPI(currentUserEmail, null, expenses).then(() => {
+                    updateDashboard(); showData();
+                }).catch(err => {
+                    console.error('Failed to delete expense:', err);
+                    alert('Failed to delete expense on server.');
+                });
+            } else {
+                saveUserData(); updateDashboard(); showData();
+            }
+        } else {
+            incomes = incomes.filter(i => i.id !== id);
+            saveUserData(); updateDashboard(); showData();
+        }
     }
 }
 
@@ -347,7 +441,19 @@ window.editRecord = function(id) {
 }
 
 window.clearAllData = function() {
-    if (confirm("DANGER: Kya saara data clear kar dein?")) { expenses = []; incomes = []; saveUserData(); loadUserData(); alert("Saara data clear ho gaya."); }
+    if (confirm("DANGER: Kya saara data clear kar dein?")) { 
+        expenses = []; incomes = []; 
+        if (USE_BACKEND) {
+            postExpensesAPI(currentUserEmail, null, [], []).then(() => {
+                loadUserData(); alert("Saara data clear ho gaya.");
+            }).catch(err => {
+                console.error('Failed to clear data:', err);
+                alert('Failed to clear data on server.');
+            });
+        } else {
+            saveUserData(); loadUserData(); alert("Saara data clear ho gaya.");
+        }
+    }
 }
 
 form.addEventListener('submit', function(e) {
@@ -357,12 +463,33 @@ form.addEventListener('submit', function(e) {
         let exp = expenses.find(e => e.id === editExpenseId);
         exp.name = name; exp.category = category; exp.amount = amount; editExpenseId = null; 
         document.querySelector('#expense-form .btn').innerText = "Add Expense"; document.querySelector('#expense-form .btn').style.backgroundColor = "#2ecc71";
+        if (USE_BACKEND) {
+            postExpensesAPI(currentUserEmail, null, expenses).then(() => {
+                updateDashboard(); alert("Kharcha Update Ho Gaya!");
+            }).catch(err => {
+                console.error('Failed to update expense:', err);
+                alert('Failed to update expense on server.');
+            });
+        } else {
+            saveUserData(); updateDashboard(); alert("Kharcha Update Ho Gaya!");
+        }
     } else {
         const now = new Date();
-        expenses.push({ id: Date.now(), name, category, amount, time: now.toLocaleDateString('en-IN') + " | " + now.toLocaleTimeString('en-IN', {hour: '2-digit', minute:'2-digit'}), searchDate: now.toISOString().split('T')[0]});
+        const newExp = { id: Date.now(), name, category, amount, time: now.toLocaleDateString('en-IN') + " | " + now.toLocaleTimeString('en-IN', {hour: '2-digit', minute:'2-digit'}), searchDate: now.toISOString().split('T')[0]};
+        expenses.push(newExp);
+        if (USE_BACKEND) {
+            postExpensesAPI(currentUserEmail, newExp).then(() => {
+                updateDashboard(); alert("Kharcha Add Ho Gaya!");
+            }).catch(err => {
+                console.error('Failed to add expense:', err);
+                alert('Failed to add expense on server.');
+                expenses.pop(); // revert
+            });
+        } else {
+            saveUserData(); updateDashboard(); alert("Kharcha Add Ho Gaya!");
+        }
     }
-    saveUserData(); expenseName.value = ''; expenseCategory.value=''; expenseAmount.value = '';
-    updateDashboard(); alert("Kharcha Add Ho Gaya!");
+    expenseName.value = ''; expenseCategory.value=''; expenseAmount.value = '';
 });
 
 searchDateInput.addEventListener('input', showData); searchLocInput.addEventListener('input', showData);
