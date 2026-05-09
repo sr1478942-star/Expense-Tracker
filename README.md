@@ -1,7 +1,7 @@
 # FDHP Expense Tracker
 
 ## Overview
-This repository contains a static frontend (`index.html`, `style.css`, `script.js`) and an optional Node.js backend (`server.js`) for Redis-backed storage.
+This repository contains a static frontend (`index.html`, `style.css`, `script.js`) and an optional Node.js backend (`server.js`) with Supabase-backed storage.
 
 The existing GitHub Actions workflow at `.github/workflows/deploy.yml` is configured to deploy the static frontend to GitHub Pages on pushes to `main`.
 
@@ -23,16 +23,16 @@ The existing GitHub Actions workflow at `.github/workflows/deploy.yml` is config
    ```powershell
    npm run start
    ```
-5. Use the backend by setting `USE_BACKEND = true` in `script.js`.
+5. Open the app in your browser at `http://localhost:3000` and keep `USE_BACKEND = true` in `script.js`.
 
 ## Supabase Notes
-- The backend stores users, expenses, and income in Supabase PostgreSQL.
+- The backend stores users, expenses, and income history in Supabase PostgreSQL.
 - The `API_KEY` is required for all `/api` requests.
-- If Supabase is not available, the app still works locally using browser `localStorage`.
+- If Supabase is not available, the app can still work locally using browser `localStorage`.
 - Create tables in Supabase:
   - `users`: email (text primary), password (text)
   - `expenses`: email (text foreign), data (jsonb)
-  - `income`: email (text foreign), amount (numeric)
+  - `income`: email (text foreign), data (jsonb)
 
 ## GitHub Pages Deployment
 - The static frontend is deployed from the repository root.
