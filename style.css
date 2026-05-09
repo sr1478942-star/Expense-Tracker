@@ -92,7 +92,7 @@ input:focus { border-color: var(--primary); }
 
 .amount-group { display: flex; align-items: center; justify-content: center; border-bottom: 2px solid var(--success); padding-bottom: 5px; margin: 0 auto; width: 70%;}
 .currency { font-size: 24px; font-weight: bold; color: var(--text-main); margin-right: 10px; }
-#expense-amount, #khata-amount { border: none; background: transparent; font-size: 38px; font-weight: bold; padding: 0; box-shadow: none; outline: none; text-align: left;}
+    #expense-amount, #udhaar-amount { border: none; background: transparent; font-size: 38px; font-weight: bold; padding: 0; box-shadow: none; outline: none; text-align: left;}
 
 .toggle-group { display: flex; background: var(--input-bg); border-radius: 8px; overflow: hidden; margin: 15px 0; border: 1px solid var(--border); }
 .toggle-group input { display: none; }
