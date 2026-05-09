@@ -8,19 +8,21 @@ const GEMINI_API_KEY = "AIzaSyA-yCaG-hvh-mIMyRQ7yrRwtLxPPqFCaXI";
 // 🔴 YOUR DATABASE IS 100% CONNECTED 🔴
 const USE_BACKEND = true; 
 const API_BASE = USE_BACKEND ? 'https://expense-tracker-zzmv.onrender.com' : '';
-const API_KEY = 'sb_publishable_z6eqo1yYTyFI3Y0vWqlZzA_MLGp6tdJ';
+// IMPORTANT: API_KEY must be injected via server config, never hardcoded in frontend
+const API_KEY = window.__APP_CONFIG__?.API_KEY || 'development-fallback-key';
 
 let usersDB = []; let currentUserEmail = null;
 let expenses = []; let incomes = []; let khataBook = []; 
 let savingsGoal = { name: 'Dream', target: 50000 };
 let currentDashFilter = 'all'; let currentHistoryTab = 'expense'; let editExpenseId = null; let isLoginMode = true;
+let expenseChartInstance = null;
 
 function triggerVibration() { if (navigator.vibrate) navigator.vibrate(40); }
 function safeGetJSON(key, defaultVal) { try { return JSON.parse(localStorage.getItem(key)) || defaultVal; } catch(e) { return defaultVal; } }
 
 // 🌐 SAFE API CALLS WITH 20 SECONDS TIMEOUT
 async function apiRequest(endpoint, options = {}) {
-    const url = `${API_BASE}${endpoint}`;
+    const url = API_BASE ? `${API_BASE}${endpoint}${endpoint.includes('?') ? '&' : '?'}api_key=${encodeURIComponent(API_KEY)}` : endpoint;
     const headers = { 'Content-Type': 'application/json', 'x-api-key': API_KEY, ...options.headers };
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000); 
@@ -32,6 +34,19 @@ async function apiRequest(endpoint, options = {}) {
     } catch (err) {
         clearTimeout(timeoutId);
         throw new Error("Server Offline");
+    }
+}
+
+async function fetchWithTimeout(url, options = {}, timeout = 20000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(timeoutId);
+        return response;
+    } catch (err) {
+        clearTimeout(timeoutId);
+        throw err;
     }
 }
 
@@ -66,6 +81,9 @@ window.switchPage = function(id) {
 
 window.openModal = function(modalId) { triggerVibration(); document.getElementById(modalId).classList.add('active'); };
 window.closeModal = function(modalId) { document.getElementById(modalId).classList.remove('active'); };
+window.openUdhaarModal = function(type) { document.getElementById('udhaar-type').value = type; window.openModal('udhaar-modal'); };
+window.submitUdhaar = function() { const type = document.getElementById('udhaar-type').value; const person = document.getElementById('udhaar-person').value.trim(); const amt = Number(document.getElementById('udhaar-amount').value);
+    if(person && amt > 0) { khataBook.push({ id: Date.now(), person, amount: amt, type, time: new Date().toLocaleDateString('en-IN') }); document.getElementById('udhaar-person').value = ''; document.getElementById('udhaar-amount').value = ''; window.saveUserData(); window.updateDashboard(); window.showData(); window.closeModal('udhaar-modal'); } else { alert('Please fill name and amount'); } };
 
 window.switchHistoryTab = function(mode) {
     triggerVibration(); currentHistoryTab = mode;
@@ -153,7 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
         new SimpleTypewriter('expense-name', ['e.g. Bareilly', 'e.g. Dukan', 'e.g. Zomato']);
         new SimpleTypewriter('expense-item', ['e.g. Sabji', 'e.g. Train Ticket', 'e.g. Samosa']);
         new SimpleTypewriter('expense-amount', ['e.g. 150', 'e.g. 500']);
-        if(document.getElementById('khata-person')) new SimpleTypewriter('khata-person', ['e.g. Rahul', 'e.g. Dukan wala']);
+        if(document.getElementById('udhaar-person')) new SimpleTypewriter('udhaar-person', ['e.g. Rahul', 'e.g. Dukan wala']);
     }, 500);
 });
 
@@ -218,9 +236,11 @@ window.getOfflineEmoji = function(text) {
 window.getSmartEmojiFromAI = async function(itemName) {
     if (!GEMINI_API_KEY) return window.getOfflineEmoji(itemName);
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: `Analyze item: "${itemName}". Reply with 2 things separated by pipe (|): 1. Single Emoji. 2. Category (Food, Travel, Shopping, Bills, Health, Education, Entertainment, Other). Example: 🍔|Food` }] }] }) });
+        const response = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: `Analyze item: "${itemName}". Reply with 2 things separated by pipe (|): 1. Single Emoji. 2. Category (Food, Travel, Shopping, Bills, Health, Education, Entertainment, Other). Example: 🍔|Food` }] }] }) }, 20000);
+        if (!response.ok) throw new Error('AI API Error');
         const data = await response.json(); let parts = data.candidates[0].content.parts[0].text.trim().split('|');
-        if(parts.length >= 2) return { emoji: parts[0].trim(), category: parts[1].trim() }; return window.getOfflineEmoji(itemName);
+        if(parts.length >= 2) return { emoji: parts[0].trim(), category: parts[1].trim() };
+        return window.getOfflineEmoji(itemName);
     } catch (error) { return window.getOfflineEmoji(itemName); }
 }
 
@@ -296,22 +316,40 @@ window.showDayDetails = function(dateStr) {
 window.handleBillScan = async function(event) {
     const file = event.target.files[0]; if(!file) return; triggerVibration();
     const btn = document.getElementById('submit-expense-btn'); btn.innerText = "⏳ Scanning..."; btn.disabled = true;
-    try {
-        const reader = new FileReader(); reader.readAsDataURL(file);
-        reader.onload = async function () {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [ { text: "Extract item name and amount from receipt. Return valid JSON only: {\"item\": \"Name\", \"amount\": 150}" }, { inline_data: { mime_type: file.type, data: reader.result.split(',')[1] } } ] }] }) });
+    if (!GEMINI_API_KEY) {
+        alert('Bill scanning requires AI key. Please enter details manually.');
+        btn.innerText = "Add Kharcha"; btn.disabled = false;
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = async function () {
+        try {
+            const res = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [ { text: "Extract item name and amount from receipt. Return valid JSON only: {\"item\": \"Name\", \"amount\": 150}" }, { inline_data: { mime_type: file.type, data: reader.result.split(',')[1] } } ] }] }) }, 20000);
+            if (!res.ok) throw new Error('Scan API failed');
             const data = await res.json(); let result = JSON.parse(data.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim());
-            if(result.amount) document.getElementById('expense-amount').value = result.amount; if(result.item) document.getElementById('expense-item').value = result.item;
+            if(result.amount) document.getElementById('expense-amount').value = result.amount;
+            if(result.item) document.getElementById('expense-item').value = result.item;
+        } catch(err) {
+            console.warn('Bill scan fallback:', err);
+            alert("❌ Scan failed. Please enter manually.");
+        } finally {
             btn.innerText = "Add Kharcha"; btn.disabled = false;
-        };
-    } catch(err) { alert("❌ Scan failed."); btn.innerText = "Add Kharcha"; btn.disabled = false; }
+        }
+    };
+    reader.onerror = function() { btn.innerText = "Add Kharcha"; btn.disabled = false; alert('File read failed.'); };
+    reader.readAsDataURL(file);
 }
 
 window.askAIAdvisor = async function() {
     triggerVibration(); window.openModal('ai-modal'); document.getElementById('ai-response-text').innerText = "Analyzing data... ⏳";
     let exp = expenses.reduce((s, e) => s + e.amount, 0); let inc = incomes.reduce((s, e) => s + e.amount, 0);
+    if (!GEMINI_API_KEY) {
+        document.getElementById('ai-response-text').innerText = "AI key nahi mili. Data manually analyze karein.";
+        return;
+    }
     try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: `Income: ₹${inc}, Expense: ₹${exp}. Give 2 lines of smart financial advice in Hinglish.` }] }] }) });
+        const res = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: `Income: ₹${inc}, Expense: ₹${exp}. Give 2 lines of smart financial advice in Hinglish.` }] }] }) }, 20000);
+        if (!res.ok) throw new Error('AI Advice timeout');
         const data = await res.json(); document.getElementById('ai-response-text').innerText = data.candidates[0].content.parts[0].text;
     } catch(err) { document.getElementById('ai-response-text').innerText = "AI Server down hai. Padhai par focus karo!"; }
 }
@@ -335,13 +373,29 @@ window.loadUserData = async function() {
     if (USE_BACKEND) {
         try {
             const data = await apiRequest(`/api/expenses?email=${encodeURIComponent(currentUserEmail)}`);
-            expenses = data.expenses || []; incomes = data.incomes || []; khataBook = safeGetJSON('khataDB_' + currentUserEmail, []); window.updateDashboard(); window.showData();
-        } catch(err) { expenses = safeGetJSON('expensesDB_' + currentUserEmail, []); incomes = safeGetJSON('incomeHistoryDB_' + currentUserEmail, []); khataBook = safeGetJSON('khataDB_' + currentUserEmail, []); window.updateDashboard(); window.showData(); }
-    } else { expenses = safeGetJSON('expensesDB_' + currentUserEmail, []); incomes = safeGetJSON('incomeHistoryDB_' + currentUserEmail, []); khataBook = safeGetJSON('khataDB_' + currentUserEmail, []); window.updateDashboard(); window.showData(); }
+            expenses = data.expenses || [];
+            incomes = data.incomes || [];
+            khataBook = data.khataBook || safeGetJSON('khataDB_' + currentUserEmail, []);
+            localStorage.setItem('expensesDB_' + currentUserEmail, JSON.stringify(expenses));
+            localStorage.setItem('incomeHistoryDB_' + currentUserEmail, JSON.stringify(incomes));
+            localStorage.setItem('khataDB_' + currentUserEmail, JSON.stringify(khataBook));
+            window.updateDashboard(); window.showData();
+        } catch(err) {
+            expenses = safeGetJSON('expensesDB_' + currentUserEmail, []);
+            incomes = safeGetJSON('incomeHistoryDB_' + currentUserEmail, []);
+            khataBook = safeGetJSON('khataDB_' + currentUserEmail, []);
+            window.updateDashboard(); window.showData();
+        }
+    } else {
+        expenses = safeGetJSON('expensesDB_' + currentUserEmail, []);
+        incomes = safeGetJSON('incomeHistoryDB_' + currentUserEmail, []);
+        khataBook = safeGetJSON('khataDB_' + currentUserEmail, []);
+        window.updateDashboard(); window.showData();
+    }
 }
 
 window.saveUserData = function() {
-    if (USE_BACKEND) { apiRequest('/api/expenses', { method: 'POST', body: JSON.stringify({ email: currentUserEmail, expenses, incomes }) }).catch(e => console.log('Sync err')); }
+    if (USE_BACKEND) { apiRequest('/api/expenses', { method: 'POST', body: JSON.stringify({ email: currentUserEmail, expenses, incomes, khata: khataBook }) }).catch(e => console.log('Sync err')); }
     localStorage.setItem('expensesDB_' + currentUserEmail, JSON.stringify(expenses)); localStorage.setItem('incomeHistoryDB_' + currentUserEmail, JSON.stringify(incomes)); localStorage.setItem('khataDB_' + currentUserEmail, JSON.stringify(khataBook));
 }
 
@@ -351,8 +405,9 @@ window.submitIncome = function() {
 }
 
 window.addKhata = function(type) {
-    triggerVibration(); let person = document.getElementById('khata-person').value.trim(); let amt = Number(document.getElementById('khata-amount').value);
-    if(person && amt > 0) { khataBook.push({ id: Date.now(), person: person, amount: amt, type: type, time: new Date().toLocaleDateString('en-IN') }); document.getElementById('khata-person').value = ''; document.getElementById('khata-amount').value = ''; window.saveUserData(); window.updateDashboard(); window.showData(); } 
+    triggerVibration(); let person = document.getElementById('udhaar-person') ? document.getElementById('udhaar-person').value.trim() : '';
+    let amt = document.getElementById('udhaar-amount') ? Number(document.getElementById('udhaar-amount').value) : 0;
+    if(person && amt > 0) { khataBook.push({ id: Date.now(), person, amount: amt, type: type, time: new Date().toLocaleDateString('en-IN') }); if(document.getElementById('udhaar-person')) document.getElementById('udhaar-person').value = ''; if(document.getElementById('udhaar-amount')) document.getElementById('udhaar-amount').value = ''; window.saveUserData(); window.updateDashboard(); window.showData(); } 
 }
 
 window.setDashFilter = function(f, btn) { currentDashFilter = f; document.querySelectorAll('.filter-pill').forEach(c => c.classList.remove('active')); btn.classList.add('active'); window.updateDashboard(); }
