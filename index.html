@@ -101,6 +101,22 @@
                         <input type="text" id="expense-item" autocomplete="off" required>
                     </div>
 
+                    <div class="form-control">
+                        <label>🏷️ Category</label>
+                        <select id="expense-category" required>
+                            <option value="" disabled selected>Select category</option>
+                            <option value="Food">Food</option>
+                            <option value="Travel">Travel</option>
+                            <option value="Bills">Bills</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Health">Health</option>
+                            <option value="Education">Education</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Udhaar">Udhaar</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
                     <div class="form-control text-center" style="margin-top: 15px;">
                         <label>💵 Kitne paise lage? (Amount)</label>
                         <div class="amount-group">
@@ -197,6 +213,7 @@
                     <div class="menu-item" onclick="backupData()"><span>💾 Backup Data</span></div>
                     <div class="menu-item" onclick="restoreData()"><span>📂 Restore Data</span></div>
                     <div class="menu-item danger-text" onclick="clearAllData()"><span>🗑️ Pura Data Clear Karein</span></div>
+                    <div class="menu-item" onclick="openTranslator()"><span>🌐 Language Translator</span></div>
                     <div class="menu-item danger-text" onclick="logoutUser()" style="border-top: 5px solid var(--border);"><span>🚪 Logout</span></div>
                 </div>
             </div>
@@ -248,12 +265,58 @@
         </div>
     </div>
 
+    <div id="khata-detail-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 id="khata-detail-title" style="margin-bottom: 15px;">Udhaar Detail</h3>
+            <div class="form-control"><label>Naam:</label><p id="khata-detail-person" style="margin: 0; font-weight: bold;"></p></div>
+            <div class="form-control"><label>Type:</label><p id="khata-detail-type" style="margin: 0;"></p></div>
+            <div class="form-control"><label>Amount:</label><p id="khata-detail-amount" style="margin: 0; font-size: 18px; font-weight: bold;"></p></div>
+            <div class="form-control"><label>Date:</label><p id="khata-detail-time" style="margin: 0;"></p></div>
+            <div class="action-row" style="margin-top: 15px;">
+                <button class="btn secondary-btn" onclick="closeModal('khata-detail-modal')">Close</button>
+            </div>
+        </div>
+    </div>
+
     <div id="ai-modal" class="modal-overlay">
         <div class="modal-box" style="text-align:center;">
             <span style="font-size:40px; display:block; margin-bottom:10px;">🤖</span>
             <h3>AI Financial Advisor</h3>
             <p id="ai-response-text" style="font-size:14px; line-height:1.6; margin: 15px 0; color:var(--text-soft);">Data analyze ho raha hai...</p>
             <button class="btn primary-btn" onclick="closeModal('ai-modal')">Samajh Gaya</button>
+        </div>
+    </div>
+
+    <div id="translator-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="margin-bottom: 15px;">🌐 Language Translator</h3>
+            <div class="form-control">
+                <label>Enter text to translate:</label>
+                <textarea id="translate-input" class="modal-input" rows="3" placeholder="Type your text here..."></textarea>
+            </div>
+            <div class="form-control">
+                <label>Translate to:</label>
+                <select id="translate-lang" class="modal-input">
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="hi">Hindi</option>
+                    <option value="zh">Chinese</option>
+                    <option value="ar">Arabic</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="ru">Russian</option>
+                    <option value="ja">Japanese</option>
+                    <option value="ko">Korean</option>
+                </select>
+            </div>
+            <div class="form-control">
+                <label>Translated text:</label>
+                <textarea id="translate-output" class="modal-input" rows="3" readonly placeholder="Translation will appear here..."></textarea>
+            </div>
+            <div class="action-row" style="margin-top: 15px;">
+                <button class="btn primary-btn" onclick="translateText()">Translate</button>
+                <button class="btn secondary-btn" onclick="closeModal('translator-modal')">Close</button>
+            </div>
         </div>
     </div>
 

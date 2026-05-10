@@ -25,15 +25,22 @@ async function apiRequest(endpoint, options = {}) {
     const url = API_BASE ? `${API_BASE}${endpoint}${endpoint.includes('?') ? '&' : '?'}api_key=${encodeURIComponent(API_KEY)}` : endpoint;
     const headers = { 'Content-Type': 'application/json', 'x-api-key': API_KEY, ...options.headers };
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000); 
+    const timeoutMs = 15000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     try {
         const response = await fetch(url, { ...options, headers, signal: controller.signal });
         clearTimeout(timeoutId);
-        if (!response.ok) throw new Error('API Error');
+        if (!response.ok) {
+            const errorText = await response.text().catch(() => '');
+            throw new Error(errorText || `API Error ${response.status}`);
+        }
         return await response.json();
     } catch (err) {
         clearTimeout(timeoutId);
-        throw new Error("Server Offline");
+        if (err.name === 'AbortError') {
+            throw new Error('Request timed out. Server may be sleeping.');
+        }
+        throw err;
     }
 }
 
@@ -82,6 +89,31 @@ window.switchPage = function(id) {
 window.openModal = function(modalId) { triggerVibration(); document.getElementById(modalId).classList.add('active'); };
 window.closeModal = function(modalId) { document.getElementById(modalId).classList.remove('active'); };
 window.openUdhaarModal = function(type) { document.getElementById('udhaar-type').value = type; window.openModal('udhaar-modal'); };
+window.openTranslator = function() { window.openModal('translator-modal'); };
+window.translateText = async function() {
+    const input = document.getElementById('translate-input').value.trim();
+    const lang = document.getElementById('translate-lang').value;
+    const output = document.getElementById('translate-output');
+    if (!input) { alert('Please enter text to translate'); return; }
+    output.value = 'Translating...';
+    try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: `Translate the following text to ${lang}: "${input}"` }] }]
+            })
+        });
+        const data = await response.json();
+        if (data.candidates && data.candidates[0].content.parts[0].text) {
+            output.value = data.candidates[0].content.parts[0].text;
+        } else {
+            output.value = 'Translation failed. Try again.';
+        }
+    } catch (error) {
+        output.value = 'Error: ' + error.message;
+    }
+};
 window.submitUdhaar = function() { const type = document.getElementById('udhaar-type').value; const person = document.getElementById('udhaar-person').value.trim(); const amt = Number(document.getElementById('udhaar-amount').value);
     if(person && amt > 0) { khataBook.push({ id: Date.now(), person, amount: amt, type, time: new Date().toLocaleDateString('en-IN') }); document.getElementById('udhaar-person').value = ''; document.getElementById('udhaar-amount').value = ''; window.saveUserData(); window.updateDashboard(); window.showData(); window.closeModal('udhaar-modal'); } else { alert('Please fill name and amount'); } };
 
@@ -128,12 +160,12 @@ document.addEventListener("DOMContentLoaded", () => {
                         await apiRequest('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
                         window.loginUser(email);
                     } catch(err) {
-                        // 🔴 FATAL FIX: If backend fails (sleep), auto-login from local db immediately.
                         let user = usersDB.find(u => u.email === email && u.password === password);
-                        if(user) { 
-                            window.loginUser(email); 
-                        } else { 
-                            throw new Error("Galat Password (Ya Server So Raha Hai)!"); 
+                        if (user) {
+                            alert('Server unavailable. Logged in from local saved account.');
+                            window.loginUser(email);
+                        } else {
+                            throw new Error(err.message || "Login failed. Server may be sleeping.");
                         }
                     }
                 } else {
@@ -144,12 +176,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (USE_BACKEND) {
                     try {
                         await apiRequest('/api/auth/signup', { method: 'POST', body: JSON.stringify({ email, password }) });
-                        usersDB.push({ email, password }); localStorage.setItem('expenseAppUsers', JSON.stringify(usersDB));
+                        if (!usersDB.find(u => u.email === email)) {
+                            usersDB.push({ email, password });
+                            localStorage.setItem('expenseAppUsers', JSON.stringify(usersDB));
+                        }
                         window.loginUser(email);
                     } catch(err) {
-                        if (usersDB.find(u => u.email === email)) throw new Error("Email pehle se hai!");
-                        usersDB.push({ email, password }); localStorage.setItem('expenseAppUsers', JSON.stringify(usersDB));
-                        alert("Account Local DB me ban gaya (Server was slow).");
+                        if (usersDB.find(u => u.email === email)) {
+                            throw new Error("Email pehle se hai!");
+                        }
+                        usersDB.push({ email, password });
+                        localStorage.setItem('expenseAppUsers', JSON.stringify(usersDB));
+                        alert("Server unavailable. Account created locally.");
                         window.loginUser(email);
                     }
                 } else {
@@ -249,31 +287,70 @@ window.getSmartEmojiFromAI = async function(itemName) {
 // ==========================================
 window.handleExpenseSubmit = async function(e) {
     e.preventDefault(); triggerVibration();
-    let nameValue = document.getElementById('expense-name').value.trim(); 
-    let itemValue = document.getElementById('expense-item').value.trim(); 
+    let nameValue = document.getElementById('expense-name').value.trim();
+    let itemValue = document.getElementById('expense-item').value.trim();
     let amount = Number(document.getElementById('expense-amount').value);
+    let categoryValue = document.getElementById('expense-category').value;
     let payMode = document.querySelector('input[name="payment-mode"]:checked').value;
     const submitBtn = document.getElementById('submit-expense-btn');
     submitBtn.innerText = "⏳ Adding..."; submitBtn.disabled = true;
 
     let analysis = await window.getSmartEmojiFromAI(itemValue);
-    
+    let selectedCategory = categoryValue || analysis.category || 'Other';
+    let emojiIcon = analysis.emoji || window.getOfflineEmoji(itemValue).emoji;
+
     if (editExpenseId) {
         let exp = expenses.find(e => e.id === editExpenseId);
-        exp.name = nameValue; exp.item = itemValue; exp.amount = amount; exp.mode = payMode; exp.category = analysis.category; exp.emojiIcon = analysis.emoji;
-        editExpenseId = null; submitBtn.innerText = "Add Kharcha";
+        if (exp) {
+            exp.name = nameValue;
+            exp.item = itemValue;
+            exp.amount = amount;
+            exp.mode = payMode;
+            exp.category = selectedCategory;
+            exp.emojiIcon = emojiIcon;
+        }
+        editExpenseId = null;
+        submitBtn.innerText = "Add Kharcha";
     } else {
-        expenses.push({ id: Date.now(), name: nameValue, item: itemValue, amount: amount, mode: payMode, category: analysis.category, emojiIcon: analysis.emoji, time: new Date().toLocaleDateString('en-IN') + " | " + new Date().toLocaleTimeString('en-IN', {hour: '2-digit', minute:'2-digit'}), searchDate: new Date().toISOString().split('T')[0]});
+        expenses.push({
+            id: Date.now(),
+            name: nameValue,
+            item: itemValue,
+            amount: amount,
+            mode: payMode,
+            category: selectedCategory,
+            emojiIcon: emojiIcon,
+            time: new Date().toLocaleDateString('en-IN') + " | " + new Date().toLocaleTimeString('en-IN', {hour: '2-digit', minute:'2-digit'}),
+            searchDate: new Date().toISOString().split('T')[0]
+        });
     }
-    document.getElementById('expense-name').value=''; document.getElementById('expense-item').value=''; document.getElementById('expense-amount').value = '';
-    submitBtn.innerText = "Add Kharcha"; submitBtn.disabled = false;
-    window.saveUserData(); window.updateDashboard(); window.showData();
+
+    document.getElementById('expense-name').value = '';
+    document.getElementById('expense-item').value = '';
+    document.getElementById('expense-category').value = '';
+    document.getElementById('expense-amount').value = '';
+    submitBtn.innerText = "Add Kharcha";
+    submitBtn.disabled = false;
+    window.saveUserData();
+    window.updateDashboard();
+    window.showData();
+    window.renderCalendar();
 };
 
 window.quickAdd = async function(loc, item, amt, payMode) {
     triggerVibration(); const now = new Date(); let analysis = window.getOfflineEmoji(item);
-    expenses.push({ id: Date.now(), name: loc, item: item, amount: amt, category: analysis.category, emojiIcon: analysis.emoji, mode: payMode, time: new Date().toLocaleDateString('en-IN') + " | " + new Date().toLocaleTimeString('en-IN', {hour: '2-digit', minute:'2-digit'}), searchDate: new Date().toISOString().split('T')[0] });
-    window.saveUserData(); window.updateDashboard(); window.showData();
+    expenses.push({
+        id: Date.now(),
+        name: loc,
+        item: item,
+        amount: amt,
+        category: analysis.category,
+        emojiIcon: analysis.emoji,
+        mode: payMode,
+        time: new Date().toLocaleDateString('en-IN') + " | " + new Date().toLocaleTimeString('en-IN', {hour: '2-digit', minute:'2-digit'}),
+        searchDate: new Date().toISOString().split('T')[0]
+    });
+    window.saveUserData(); window.updateDashboard(); window.showData(); window.renderCalendar();
 }
 
 // ==========================================
@@ -302,10 +379,24 @@ window.showDayDetails = function(dateStr) {
     document.getElementById('selected-date-label').innerText = "Hisaab: " + dateStr;
     list.innerHTML = '';
     let dayExp = expenses.filter(e => e.searchDate === dateStr);
-    if(dayExp.length === 0) { list.innerHTML = '<p style="font-size:12px; color:var(--text-soft);">Koi kharcha nahi hai.</p>'; return; }
+    if (dayExp.length === 0) {
+        list.innerHTML = '<p style="font-size:12px; color:var(--text-soft);">Koi kharcha nahi hai.</p>';
+        return;
+    }
     dayExp.forEach(e => {
+        let modeBadge = e.mode ? (e.mode === 'Cash' ? '💵 Cash' : '📱 Online') : '';
+        let categoryBadge = e.category ? `<span class="mode-tag">${e.category}</span>` : '';
         let li = document.createElement('li');
-        li.innerHTML = `<div class="ledger-info"><div class="emoji-box">${e.emojiIcon||'🛍️'}</div><div class="details"><h4>${e.item}</h4><p>${e.name}</p></div></div><div class="ledger-amt"><h4 class="amt-exp">- ₹${e.amount}</h4></div>`;
+        li.innerHTML = `
+            <div class="ledger-info">
+                <div class="emoji-box">${e.emojiIcon || '🛍️'}</div>
+                <div class="details">
+                    <h4>${e.item} <small style="font-weight:normal; color:var(--text-soft)">(${e.name})</small></h4>
+                    <p>${e.time} • ${categoryBadge} <span class="mode-tag">${modeBadge}</span></p>
+                </div>
+            </div>
+            <div class="ledger-amt"><h4 class="amt-exp">- ₹${e.amount}</h4></div>
+        `;
         list.appendChild(li);
     });
 };
@@ -459,14 +550,15 @@ window.showData = function() {
     if(currentHistoryTab === 'expense') {
         [...expenses].reverse().filter(e => !filterItem || (e.item+" "+e.name).toLowerCase().includes(filterItem)).forEach(e => {
             let modeBadge = e.mode ? (e.mode === 'Cash' ? '💵 Cash' : '📱 Online') : '';
+            let categoryBadge = e.category ? `<span class="mode-tag">${e.category}</span>` : '';
             let li = document.createElement('li');
-            li.innerHTML = `<div class="ledger-info"><div class="emoji-box">${e.emojiIcon || '🛍️'}</div><div class="details"><h4>${e.item} <small style="font-weight:normal; color:var(--text-soft)">(${e.name})</small></h4><p>${e.time} • <span class="mode-tag">${modeBadge}</span></p></div></div><div class="ledger-amt"><h4 class="amt-exp">- ₹${e.amount}</h4><div class="ledger-actions"><button class="act-btn" onclick="editRecord(${e.id})">✏️</button><button class="act-btn" onclick="deleteRecord(${e.id}, 'expense')">🗑️</button></div></div>`;
+            li.innerHTML = `<div class="ledger-info"><div class="emoji-box">${e.emojiIcon || '🛍️'}</div><div class="details" onclick="openHistoryDetail(${e.id}, 'expense')" style="cursor:pointer;"><h4>${e.item} <small style="font-weight:normal; color:var(--text-soft)">(${e.name})</small></h4><p>${e.time} • ${categoryBadge} <span class="mode-tag">${modeBadge}</span></p></div></div><div class="ledger-amt"><h4 class="amt-exp">- ₹${e.amount}</h4><div class="ledger-actions"><button class="act-btn" onclick="editRecord(${e.id})">✏️</button><button class="act-btn" onclick="deleteRecord(${e.id}, 'expense')">🗑️</button></div></div>`;
             if(expenseList) expenseList.appendChild(li);
         });
     } else {
         [...incomes].reverse().forEach(inc => {
             let li = document.createElement('li'); li.className = 'inc-item';
-            li.innerHTML = `<div class="ledger-info"><div class="emoji-box">🏦</div><div class="details"><h4>${inc.source}</h4><p>${inc.time}</p></div></div><div class="ledger-amt"><h4 class="amt-inc">+ ₹${inc.amount}</h4><button class="act-btn" onclick="deleteRecord(${inc.id}, 'income')">🗑️</button></div>`;
+            li.innerHTML = `<div class="ledger-info"><div class="emoji-box">🏦</div><div class="details" onclick="openHistoryDetail(${inc.id}, 'income')" style="cursor:pointer;"><h4>${inc.source}</h4><p>${inc.time}</p></div></div><div class="ledger-amt"><h4 class="amt-inc">+ ₹${inc.amount}</h4><button class="act-btn" onclick="deleteRecord(${inc.id}, 'income')">🗑️</button></div>`;
             if(expenseList) expenseList.appendChild(li);
         });
     }
@@ -474,14 +566,44 @@ window.showData = function() {
     if(khataList) {
         [...khataBook].reverse().forEach(k => {
             let isGave = k.type === 'gave'; let li = document.createElement('li'); li.className = isGave ? 'khata-gave' : '';
-            li.innerHTML = `<div class="ledger-info"><div class="emoji-box" style="background:transparent; font-size:24px;">${isGave ? '⬆️' : '⬇️'}</div><div class="details"><h4>${k.person}</h4><p>${k.time}</p></div></div><div class="ledger-amt"><h4 class="${isGave ? 'amt-inc' : 'amt-give'}">${isGave ? '+' : '-'} ₹${k.amount}</h4><div class="ledger-actions"><button class="act-btn" onclick="deleteRecord(${k.id}, 'khata')">✅</button></div></div>`;
+            li.innerHTML = `<div class="ledger-info"><div class="emoji-box" style="background:transparent; font-size:24px;">${isGave ? '⬆️' : '⬇️'}</div><div class="details" onclick="openKhataDetail(${k.id})" style="cursor:pointer;"><h4>${k.person}</h4><p>${k.time}</p></div></div><div class="ledger-amt"><h4 class="${isGave ? 'amt-inc' : 'amt-give'}">${isGave ? '+' : '-'} ₹${k.amount}</h4><div class="ledger-actions"><button class="act-btn" onclick="deleteRecord(${k.id}, 'khata')">✅</button></div></div>`;
             if(khataList) khataList.appendChild(li);
         });
     }
 }
 
+window.openKhataDetail = function(id) {
+    const record = khataBook.find(k => k.id === id);
+    if (!record) return;
+    const title = record.type === 'gave' ? 'Maine Diya' : 'Maine Liya';
+    document.getElementById('khata-detail-title').innerText = title;
+    document.getElementById('khata-detail-person').innerText = record.person;
+    document.getElementById('khata-detail-type').innerText = record.type === 'gave' ? 'Maine Diya' : 'Maine Liya';
+    document.getElementById('khata-detail-amount').innerText = `₹${record.amount}`;
+    document.getElementById('khata-detail-time').innerText = record.time;
+    window.openModal('khata-detail-modal');
+};
+
+window.openHistoryDetail = function(id, type) {
+    let record;
+    if (type === 'expense') {
+        record = expenses.find(e => e.id === id);
+    } else {
+        record = incomes.find(i => i.id === id);
+    }
+    if (!record) return;
+    document.getElementById('history-detail-title').innerText = type === 'expense' ? 'Kharcha Detail' : 'Aamdani Detail';
+    document.getElementById('history-detail-what').innerText = type === 'expense' ? record.item : record.source;
+    document.getElementById('history-detail-person').innerText = type === 'expense' ? record.name || 'Unknown' : '-';
+    document.getElementById('history-detail-type').innerText = type === 'expense' ? record.category || '-' : 'Income';
+    document.getElementById('history-detail-amount').innerText = `${type === 'expense' ? '- ₹' : '+ ₹'}${record.amount}`;
+    document.getElementById('history-detail-time').innerText = record.time;
+    document.getElementById('history-detail-mode').innerText = type === 'expense' ? (record.mode || '-') : '-';
+    window.openModal('history-detail-modal');
+};
+
 window.deleteRecord = function(id, type='expense') { if (confirm("Delete karein?")) { triggerVibration(); if(type === 'expense') { expenses = expenses.filter(e => e.id !== id); } else if(type === 'income') incomes = incomes.filter(i => i.id !== id); else khataBook = khataBook.filter(k => k.id !== id); window.saveUserData(); window.updateDashboard(); window.showData(); } }
-window.editRecord = function(id) { let exp = expenses.find(e => e.id === id); if (exp) { document.getElementById('expense-name').value = exp.name || ''; document.getElementById('expense-item').value = exp.item || ''; document.getElementById('expense-amount').value = exp.amount; if(exp.mode === 'Cash' && document.getElementById('mode-cash')) document.getElementById('mode-cash').checked = true; editExpenseId = id; document.getElementById('submit-expense-btn').innerText = "Update Expense"; window.switchPage('home'); window.scrollTo(0,0); } }
+window.editRecord = function(id) { let exp = expenses.find(e => e.id === id); if (exp) { document.getElementById('expense-name').value = exp.name || ''; document.getElementById('expense-item').value = exp.item || ''; document.getElementById('expense-amount').value = exp.amount; if (document.getElementById('expense-category')) document.getElementById('expense-category').value = exp.category || ''; if(exp.mode === 'Cash' && document.getElementById('mode-cash')) document.getElementById('mode-cash').checked = true; editExpenseId = id; document.getElementById('submit-expense-btn').innerText = "Update Expense"; window.switchPage('home'); window.scrollTo(0,0); } }
 window.clearAllData = function() { if (confirm("Pura Data Delete karein?")) { expenses = []; incomes = []; khataBook = []; window.saveUserData(); window.loadUserData(); } }
 
 window.exportToExcel = function() { triggerVibration(); let csvContent = "data:text/csv;charset=utf-8,Type,Date,Location,Item,Mode,Amount\n"; incomes.forEach(i => csvContent += `Income,${i.time},N/A,${i.source},N/A,${i.amount}\n`); expenses.forEach(e => csvContent += `Expense,${e.time},${e.name},${e.item},${e.mode},${e.amount}\n`); khataBook.forEach(k => csvContent += `Udhaar,${k.time},N/A,${k.person},N/A,${k.amount}\n`); const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", `Hisaab_Report.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); }
