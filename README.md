@@ -17,7 +17,7 @@ The existing GitHub Actions workflow at `.github/workflows/deploy.yml` is config
    ```text
    SUPABASE_URL=https://your-project.supabase.co
    SUPABASE_ANON_KEY=your-anon-key-here
-   API_KEY=S5h9hafr9p42ghvlidpfudzk5hcbydh7yx2iraa4gie5iyguuz6
+   API_KEY=yys
    ```
 4. Start the backend server:
    ```powershell
