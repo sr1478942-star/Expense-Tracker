@@ -1,9 +1,27 @@
 // ==========================================
 // 👑 GLOBAL CONFIG & BACKEND SETUP
 // ==========================================
-const SEED_EMAIL = "sandeep@gmail.com"; 
-const SEED_PASS = "12345";
-const GEMINI_API_KEY = "AIzaSyA-yCaG-hvh-mIMyRQ7yrRwtLxPPqFCaXI";
+const SEED_EMAIL = "sandeep@gmail.com";
+const SEED_PASS  = "12345";
+
+// 🔐 API keys are injected by server.js from .env — never hardcoded here
+const _cfg          = window.__APP_CONFIG__ || {};
+const GEMINI_API_KEY  = _cfg.GEMINI_KEYS?.[0] || '';   // single key (used by older calls)
+const GEMINI_API_KEYS = _cfg.GEMINI_KEYS    || [];     // full array for i18n rotation
+const GROQ_API_KEY    = _cfg.GROQ_KEY       || '';
+
+
+// ── Language Change Handler (called by both lang selectors) ──
+window.handleLangChange = async function(lang) {
+    const s1 = document.getElementById('lang-selector');
+    const s2 = document.getElementById('lang-selector-auth');
+    if (s1) s1.value = lang;
+    if (s2) s2.value = lang;
+    await window.i18n.loadLanguage(lang, true);
+    // Re-render dynamic lists after language change
+    if (typeof window.updateDashboard === 'function') window.updateDashboard();
+    if (typeof window.showData === 'function') window.showData();
+};
 
 // 🔴 YOUR DATABASE IS 100% CONNECTED 🔴
 const USE_BACKEND = true; 
@@ -88,7 +106,11 @@ window.switchPage = function(id) {
 
 window.openModal = function(modalId) { triggerVibration(); document.getElementById(modalId).classList.add('active'); };
 window.closeModal = function(modalId) { document.getElementById(modalId).classList.remove('active'); };
-window.openUdhaarModal = function(type) { document.getElementById('udhaar-type').value = type; window.openModal('udhaar-modal'); };
+window.openUdhaarModal = function(type) {
+    document.getElementById('udhaar-type').value = type;
+    document.getElementById('udhaar-modal-title').innerText = type === 'gave' ? window.i18n.t('udhaar_gave_title','Maine Diya') : window.i18n.t('udhaar_took_title','Maine Liya');
+    window.openModal('udhaar-modal');
+};
 window.openTranslator = function() { window.openModal('translator-modal'); };
 window.translateText = async function() {
     const input = document.getElementById('translate-input').value.trim();
@@ -126,15 +148,26 @@ window.switchHistoryTab = function(mode) {
 
 window.toggleAuthMode = function() {
     isLoginMode = !isLoginMode;
-    document.getElementById('auth-title').innerText = isLoginMode ? "Login karein" : "Naya Account";
-    document.getElementById('auth-btn').innerText = isLoginMode ? "Secure Login" : "Sign Up";
-    document.getElementById('switch-to-signup').innerText = isLoginMode ? "Sign Up" : "Login";
+    document.getElementById('auth-title').setAttribute('data-i18n', isLoginMode ? 'auth_title_login' : 'auth_title_signup');
+    document.getElementById('auth-title').innerText = isLoginMode ? window.i18n.t('auth_title_login') : window.i18n.t('auth_title_signup');
+    document.getElementById('auth-btn').setAttribute('data-i18n', isLoginMode ? 'auth_btn_login' : 'auth_btn_signup');
+    document.getElementById('auth-btn').innerText = isLoginMode ? window.i18n.t('auth_btn_login') : window.i18n.t('auth_btn_signup');
+    document.getElementById('switch-to-signup').setAttribute('data-i18n', isLoginMode ? 'auth_switch_signup_link' : 'auth_switch_login_link');
+    document.getElementById('switch-to-signup').innerText = isLoginMode ? window.i18n.t('auth_switch_signup_link') : window.i18n.t('auth_switch_login_link');
 };
 
 // ==========================================
 // 🔒 LOGIN & DOM LOAD (DEEP ERROR FIX)
 // ==========================================
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    // 🌐 Boot i18n — pass all Gemini keys + Groq key for maximum reliability
+    await window.i18n.init(GEMINI_API_KEYS, GROQ_API_KEY);
+    // Sync selectors to saved language
+    const savedLang = localStorage.getItem('apnaHisaab_lang') || 'en';
+    const s1 = document.getElementById('lang-selector');
+    const s2 = document.getElementById('lang-selector-auth');
+    if (s1) s1.value = savedLang;
+    if (s2) s2.value = savedLang;
     usersDB = safeGetJSON('expenseAppUsers', []); 
     currentUserEmail = localStorage.getItem('currentUserEmail');
 
@@ -213,7 +246,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 500);
 });
 
-window.loginUser = function(email) { localStorage.setItem('currentUserEmail', email); currentUserEmail = email; window.showAppScreen(); };
+window.loginUser = function(email) {
+    localStorage.setItem('currentUserEmail', email);
+    currentUserEmail = email;
+    window.showAppScreen();
+    // 👋 Show AI-powered welcome message
+    setTimeout(() => { if (typeof window.showWelcomeMessage === 'function') window.showWelcomeMessage(email); }, 800);
+};
 window.logoutUser = function() { localStorage.removeItem('currentUserEmail'); location.reload(); };
 
 window.resetPassword = function() { 
@@ -293,7 +332,7 @@ window.handleExpenseSubmit = async function(e) {
     let categoryValue = document.getElementById('expense-category').value;
     let payMode = document.querySelector('input[name="payment-mode"]:checked').value;
     const submitBtn = document.getElementById('submit-expense-btn');
-    submitBtn.innerText = "⏳ Adding..."; submitBtn.disabled = true;
+    submitBtn.innerText = window.i18n.t('form_adding', '⏳ Adding...'); submitBtn.disabled = true;
 
     let analysis = await window.getSmartEmojiFromAI(itemValue);
     let selectedCategory = categoryValue || analysis.category || 'Other';
@@ -310,7 +349,7 @@ window.handleExpenseSubmit = async function(e) {
             exp.emojiIcon = emojiIcon;
         }
         editExpenseId = null;
-        submitBtn.innerText = "Add Kharcha";
+        submitBtn.innerText = window.i18n.t('form_submit_btn', 'Add Kharcha');
     } else {
         expenses.push({
             id: Date.now(),
@@ -329,7 +368,7 @@ window.handleExpenseSubmit = async function(e) {
     document.getElementById('expense-item').value = '';
     document.getElementById('expense-category').value = '';
     document.getElementById('expense-amount').value = '';
-    submitBtn.innerText = "Add Kharcha";
+    submitBtn.innerText = window.i18n.t('form_submit_btn', 'Add Kharcha');
     submitBtn.disabled = false;
     window.saveUserData();
     window.updateDashboard();
@@ -380,11 +419,11 @@ window.showDayDetails = function(dateStr) {
     list.innerHTML = '';
     let dayExp = expenses.filter(e => e.searchDate === dateStr);
     if (dayExp.length === 0) {
-        list.innerHTML = '<p style="font-size:12px; color:var(--text-soft);">Koi kharcha nahi hai.</p>';
+        list.innerHTML = `<p style="font-size:12px; color:var(--text-soft);">${window.i18n.t('calendar_no_expense', 'Koi kharcha nahi hai.')}</p>`;
         return;
     }
     dayExp.forEach(e => {
-        let modeBadge = e.mode ? (e.mode === 'Cash' ? '💵 Cash' : '📱 Online') : '';
+        let modeBadge = e.mode ? (e.mode === 'Cash' ? window.i18n.t('mode_cash','💵 Cash') : window.i18n.t('mode_online','📱 Online')) : '';
         let categoryBadge = e.category ? `<span class="mode-tag">${e.category}</span>` : '';
         let li = document.createElement('li');
         li.innerHTML = `
@@ -432,17 +471,17 @@ window.handleBillScan = async function(event) {
 }
 
 window.askAIAdvisor = async function() {
-    triggerVibration(); window.openModal('ai-modal'); document.getElementById('ai-response-text').innerText = "Analyzing data... ⏳";
+    triggerVibration(); window.openModal('ai-modal'); document.getElementById('ai-response-text').innerText = window.i18n.t('ai_modal_loading', 'Data analyze ho raha hai...');
     let exp = expenses.reduce((s, e) => s + e.amount, 0); let inc = incomes.reduce((s, e) => s + e.amount, 0);
     if (!GEMINI_API_KEY) {
-        document.getElementById('ai-response-text').innerText = "AI key nahi mili. Data manually analyze karein.";
+        document.getElementById('ai-response-text').innerText = window.i18n.t('ai_no_key');
         return;
     }
     try {
         const res = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: `Income: ₹${inc}, Expense: ₹${exp}. Give 2 lines of smart financial advice in Hinglish.` }] }] }) }, 20000);
         if (!res.ok) throw new Error('AI Advice timeout');
         const data = await res.json(); document.getElementById('ai-response-text').innerText = data.candidates[0].content.parts[0].text;
-    } catch(err) { document.getElementById('ai-response-text').innerText = "AI Server down hai. Padhai par focus karo!"; }
+    } catch(err) { document.getElementById('ai-response-text').innerText = window.i18n.t('ai_server_down'); }
 }
 
 window.startVoiceRecognition = function() {
@@ -549,7 +588,7 @@ window.showData = function() {
 
     if(currentHistoryTab === 'expense') {
         [...expenses].reverse().filter(e => !filterItem || (e.item+" "+e.name).toLowerCase().includes(filterItem)).forEach(e => {
-            let modeBadge = e.mode ? (e.mode === 'Cash' ? '💵 Cash' : '📱 Online') : '';
+            let modeBadge = e.mode ? (e.mode === 'Cash' ? window.i18n.t('mode_cash','💵 Cash') : window.i18n.t('mode_online','📱 Online')) : '';
             let categoryBadge = e.category ? `<span class="mode-tag">${e.category}</span>` : '';
             let li = document.createElement('li');
             li.innerHTML = `<div class="ledger-info"><div class="emoji-box">${e.emojiIcon || '🛍️'}</div><div class="details" onclick="openHistoryDetail(${e.id}, 'expense')" style="cursor:pointer;"><h4>${e.item} <small style="font-weight:normal; color:var(--text-soft)">(${e.name})</small></h4><p>${e.time} • ${categoryBadge} <span class="mode-tag">${modeBadge}</span></p></div></div><div class="ledger-amt"><h4 class="amt-exp">- ₹${e.amount}</h4><div class="ledger-actions"><button class="act-btn" onclick="editRecord(${e.id})">✏️</button><button class="act-btn" onclick="deleteRecord(${e.id}, 'expense')">🗑️</button></div></div>`;
@@ -575,10 +614,10 @@ window.showData = function() {
 window.openKhataDetail = function(id) {
     const record = khataBook.find(k => k.id === id);
     if (!record) return;
-    const title = record.type === 'gave' ? 'Maine Diya' : 'Maine Liya';
+    const title = record.type === 'gave' ? window.i18n.t('udhaar_gave_title') : window.i18n.t('udhaar_took_title');
     document.getElementById('khata-detail-title').innerText = title;
     document.getElementById('khata-detail-person').innerText = record.person;
-    document.getElementById('khata-detail-type').innerText = record.type === 'gave' ? 'Maine Diya' : 'Maine Liya';
+    document.getElementById('khata-detail-type').innerText = record.type === 'gave' ? window.i18n.t('udhaar_gave_title') : window.i18n.t('udhaar_took_title');
     document.getElementById('khata-detail-amount').innerText = `₹${record.amount}`;
     document.getElementById('khata-detail-time').innerText = record.time;
     window.openModal('khata-detail-modal');
@@ -592,7 +631,7 @@ window.openHistoryDetail = function(id, type) {
         record = incomes.find(i => i.id === id);
     }
     if (!record) return;
-    document.getElementById('history-detail-title').innerText = type === 'expense' ? 'Kharcha Detail' : 'Aamdani Detail';
+    document.getElementById('history-detail-title').innerText = type === 'expense' ? window.i18n.t('history_detail_title_expense') : window.i18n.t('history_detail_title_income');
     document.getElementById('history-detail-what').innerText = type === 'expense' ? record.item : record.source;
     document.getElementById('history-detail-person').innerText = type === 'expense' ? record.name || 'Unknown' : '-';
     document.getElementById('history-detail-type').innerText = type === 'expense' ? record.category || '-' : 'Income';
@@ -602,9 +641,9 @@ window.openHistoryDetail = function(id, type) {
     window.openModal('history-detail-modal');
 };
 
-window.deleteRecord = function(id, type='expense') { if (confirm("Delete karein?")) { triggerVibration(); if(type === 'expense') { expenses = expenses.filter(e => e.id !== id); } else if(type === 'income') incomes = incomes.filter(i => i.id !== id); else khataBook = khataBook.filter(k => k.id !== id); window.saveUserData(); window.updateDashboard(); window.showData(); } }
-window.editRecord = function(id) { let exp = expenses.find(e => e.id === id); if (exp) { document.getElementById('expense-name').value = exp.name || ''; document.getElementById('expense-item').value = exp.item || ''; document.getElementById('expense-amount').value = exp.amount; if (document.getElementById('expense-category')) document.getElementById('expense-category').value = exp.category || ''; if(exp.mode === 'Cash' && document.getElementById('mode-cash')) document.getElementById('mode-cash').checked = true; editExpenseId = id; document.getElementById('submit-expense-btn').innerText = "Update Expense"; window.switchPage('home'); window.scrollTo(0,0); } }
-window.clearAllData = function() { if (confirm("Pura Data Delete karein?")) { expenses = []; incomes = []; khataBook = []; window.saveUserData(); window.loadUserData(); } }
+window.deleteRecord = function(id, type='expense') { if (confirm(window.i18n.t('delete_confirm','Delete karein?'))) { triggerVibration(); if(type === 'expense') { expenses = expenses.filter(e => e.id !== id); } else if(type === 'income') incomes = incomes.filter(i => i.id !== id); else khataBook = khataBook.filter(k => k.id !== id); window.saveUserData(); window.updateDashboard(); window.showData(); } }
+window.editRecord = function(id) { let exp = expenses.find(e => e.id === id); if (exp) { document.getElementById('expense-name').value = exp.name || ''; document.getElementById('expense-item').value = exp.item || ''; document.getElementById('expense-amount').value = exp.amount; if (document.getElementById('expense-category')) document.getElementById('expense-category').value = exp.category || ''; if(exp.mode === 'Cash' && document.getElementById('mode-cash')) document.getElementById('mode-cash').checked = true; editExpenseId = id; document.getElementById('submit-expense-btn').innerText = window.i18n.t('form_update_btn','Update Expense'); window.switchPage('home'); window.scrollTo(0,0); } }
+window.clearAllData = function() { if (confirm(window.i18n.t('clear_confirm','Pura Data Delete karein?'))) { expenses = []; incomes = []; khataBook = []; window.saveUserData(); window.loadUserData(); } }
 
 window.exportToExcel = function() { triggerVibration(); let csvContent = "data:text/csv;charset=utf-8,Type,Date,Location,Item,Mode,Amount\n"; incomes.forEach(i => csvContent += `Income,${i.time},N/A,${i.source},N/A,${i.amount}\n`); expenses.forEach(e => csvContent += `Expense,${e.time},${e.name},${e.item},${e.mode},${e.amount}\n`); khataBook.forEach(k => csvContent += `Udhaar,${k.time},N/A,${k.person},N/A,${k.amount}\n`); const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", `Hisaab_Report.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); }
 window.backupData = function() { let dump = {}; for (let i = 0; i < localStorage.length; i++) dump[localStorage.key(i)] = localStorage.getItem(localStorage.key(i)); let blob = new Blob([JSON.stringify(dump)], {type: "application/json"}); let link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = "Backup.json"; link.click(); };

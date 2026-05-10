@@ -4,59 +4,106 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Apna Hisaab - Premium</title>
+    <!-- Noto Sans for Hindi (Devanagari) rendering -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     
+    <!-- ═══════════════════════════════════════
+         🔐 AUTH / LOGIN SCREEN
+    ═══════════════════════════════════════ -->
     <div id="auth-screen" class="auth-container active-screen">
         <div class="auth-box">
             <div class="logo-circle">₹</div>
-            <h2>Apna Hisaab</h2>
-            <p class="subtitle">Expense & Khata Manager</p>
-            <h3 id="auth-title">Secure Login</h3>
+            <h2 data-i18n="app_name">Apna Hisaab</h2>
+            <p class="subtitle" data-i18n="app_subtitle">Expense &amp; Khata Manager</p>
+            <h3 id="auth-title" data-i18n="auth_title_login">Secure Login</h3>
             
             <form id="auth-form">
                 <div class="form-control">
-                    <label>✉️ Email Address</label>
-                    <input type="email" id="auth-email" required>
+                    <label data-i18n="auth_label_email">✉️ Email Address</label>
+                    <input type="email" id="auth-email" required data-i18n-placeholder="auth_label_email">
                 </div>
                 <div class="form-control">
-                    <label>🔒 Password</label>
+                    <label data-i18n="auth_label_password">🔒 Password</label>
                     <input type="password" id="auth-password" required>
                 </div>
                 <div class="forgot-pw">
-                    <span onclick="resetPassword()">Forgot Password?</span>
+                    <span onclick="resetPassword()" data-i18n="auth_forgot_pw">Forgot Password?</span>
                 </div>
-                <button type="submit" class="btn primary-btn" id="auth-btn">Secure Login</button>
+                <button type="submit" class="btn primary-btn" id="auth-btn" data-i18n="auth_btn_login">Secure Login</button>
             </form>
             
-            <p class="auth-switch">Naya Account? <span onclick="toggleAuthMode()" id="switch-to-signup">Sign Up</span></p>
-            <button class="theme-btn" onclick="toggleDarkMode()">🌙 Theme</button>
+            <p class="auth-switch">
+                <span data-i18n="auth_switch_to_signup">Naya Account? </span>
+                <span onclick="toggleAuthMode()" id="switch-to-signup" data-i18n="auth_switch_signup_link">Sign Up</span>
+            </p>
+
+            <!-- Language Selector (Auth Screen) -->
+            <div class="auth-lang-row">
+                <button class="theme-btn" onclick="toggleDarkMode()">🌙 <span data-i18n="auth_theme_btn_label">Theme</span></button>
+                <div class="lang-selector-wrap auth-lang-sel">
+                    <span class="lang-globe">🌐</span>
+                    <select id="lang-selector-auth" class="lang-select" onchange="handleLangChange(this.value)" aria-label="Select Language">
+                        <option value="en">🇮🇳 Hinglish</option>
+                        <option value="hi">🇮🇳 हिंदी</option>
+                        <option value="en_pure">🌐 English</option>
+                        <option value="pa">🇮🇳 ਪੰਜਾਬੀ</option>
+                        <option value="bn">🇧🇩 বাংলা</option>
+                        <option value="ta">🇮🇳 தமிழ்</option>
+                        <option value="gu">🇮🇳 ગુજરાતી</option>
+                        <option value="mr">🇮🇳 मराठी</option>
+                        <option value="ur">🇵🇰 اردو</option>
+                    </select>
+                </div>
+            </div>
         </div>
     </div>
 
+    <!-- ═══════════════════════════════════════
+         📱 MAIN APP SCREEN
+    ═══════════════════════════════════════ -->
     <div id="main-app-screen" class="hidden-screen app-wrapper">
         
+        <!-- ── HEADER ── -->
         <header class="app-header">
             <div class="header-left">
                 <div class="logo-small">₹</div>
-                <h2>Apna Hisaab</h2>
+                <h2 data-i18n="app_name">Apna Hisaab</h2>
             </div>
             <div class="header-right">
-                <button class="icon-btn" onclick="toggleDarkMode()" title="Theme">🌙</button>
+                <!-- Language Selector (Main App) -->
+                <div class="lang-selector-wrap">
+                    <span class="lang-globe">🌐</span>
+                    <select id="lang-selector" class="lang-select" onchange="handleLangChange(this.value)" aria-label="Select Language" data-i18n-title="lang_selector_label">
+                        <option value="en">🇮🇳 Hinglish</option>
+                        <option value="hi">🇮🇳 हिंदी</option>
+                        <option value="en_pure">🌐 English</option>
+                        <option value="pa">🇮🇳 ਪੰਜਾਬੀ</option>
+                        <option value="bn">🇧🇩 বাংলা</option>
+                        <option value="ta">🇮🇳 தமிழ்</option>
+                        <option value="gu">🇮🇳 ગુજરાતી</option>
+                        <option value="mr">🇮🇳 मराठी</option>
+                        <option value="ur">🇵🇰 اردو</option>
+                    </select>
+                </div>
+                <button class="icon-btn" onclick="toggleDarkMode()" data-i18n-title="auth_theme_btn_label">🌙</button>
                 <button class="icon-btn" onclick="switchPage('menu')" title="Profile">👤</button>
             </div>
         </header>
 
         <main class="app-body">
             
+            <!-- ── HOME PAGE ── -->
             <div id="page-home" class="page active">
                 
                 <div class="main-card">
                     <div class="balance-header">
-                        <span>💰 Bacha Hua Paisa</span>
-                        <button class="ai-btn-small" onclick="askAIAdvisor()">🤖 AI Advice</button>
+                        <span data-i18n="balance_label">💰 Bacha Hua Paisa</span>
+                        <button class="ai-btn-small" onclick="askAIAdvisor()" data-i18n="ai_advice_btn">🤖 AI Advice</button>
                     </div>
                     <h2 id="display-balance">₹0</h2>
                     <div class="budget-bar"><div id="budget-progress" class="budget-fill"></div></div>
@@ -64,17 +111,20 @@
 
                 <div class="wallet-split">
                     <div class="split-card income-card" onclick="openModal('income-modal')">
-                        <span class="card-label">🏦 Total Aamdani <span class="add-badge">+</span></span>
+                        <span class="card-label">
+                            <span data-i18n="income_label">🏦 Total Aamdani</span>
+                            <span class="add-badge">+</span>
+                        </span>
                         <h3 id="display-income">₹0</h3>
                     </div>
                     <div class="split-card expense-card">
-                        <span class="card-label">📉 Kharcha</span>
+                        <span class="card-label" data-i18n="expense_label">📉 Kharcha</span>
                         <h3 id="display-expense">₹0</h3>
                     </div>
                 </div>
 
                 <div class="quick-add-section">
-                    <span style="font-size: 11px; font-weight: bold; color: var(--text-soft); margin-bottom: 5px; display:block;">⚡ QUICK ADD</span>
+                    <span style="font-size: 11px; font-weight: bold; color: var(--text-soft); margin-bottom: 5px; display:block;" data-i18n="quick_add_title">⚡ QUICK ADD</span>
                     <div class="marquee-container">
                         <div class="marquee-content">
                             <span class="quick-pill" onclick="quickAdd('Market', 'Chai', 10, 'Cash')">☕ Chai ₹10</span>
@@ -88,37 +138,39 @@
                 </div>
 
                 <form id="expense-form" class="clean-form">
-                    <p class="section-title" style="margin-bottom: 15px;">📝 Naya Kharcha</p>
+                    <p class="section-title" style="margin-bottom: 15px;" data-i18n="form_title">📝 Naya Kharcha</p>
                     
                     <div class="form-control">
-                        <label>📍 Location (Kahan kharida?)</label>
-                        <input type="text" id="expense-name" list="location-options" autocomplete="off" required>
+                        <label data-i18n="form_location_label">📍 Location (Kahan kharida?)</label>
+                        <input type="text" id="expense-name" list="location-options" autocomplete="off" required
+                               data-i18n-placeholder="form_location_label">
                         <datalist id="location-options"></datalist>
                     </div>
 
                     <div class="form-control">
-                        <label>🛍️ Item (Kya kharida?)</label>
-                        <input type="text" id="expense-item" autocomplete="off" required>
+                        <label data-i18n="form_item_label">🛍️ Item (Kya kharida?)</label>
+                        <input type="text" id="expense-item" autocomplete="off" required
+                               data-i18n-placeholder="form_item_label">
                     </div>
 
                     <div class="form-control">
-                        <label>🏷️ Category</label>
+                        <label data-i18n="form_category_label">🏷️ Category</label>
                         <select id="expense-category" required>
-                            <option value="" disabled selected>Select category</option>
-                            <option value="Food">Food</option>
-                            <option value="Travel">Travel</option>
-                            <option value="Bills">Bills</option>
-                            <option value="Shopping">Shopping</option>
-                            <option value="Health">Health</option>
-                            <option value="Education">Education</option>
-                            <option value="Entertainment">Entertainment</option>
-                            <option value="Udhaar">Udhaar</option>
-                            <option value="Other">Other</option>
+                            <option value="" disabled selected data-i18n="form_category_placeholder">Select category</option>
+                            <option value="Food"          data-i18n="cat_food">Food</option>
+                            <option value="Travel"        data-i18n="cat_travel">Travel</option>
+                            <option value="Bills"         data-i18n="cat_bills">Bills</option>
+                            <option value="Shopping"      data-i18n="cat_shopping">Shopping</option>
+                            <option value="Health"        data-i18n="cat_health">Health</option>
+                            <option value="Education"     data-i18n="cat_education">Education</option>
+                            <option value="Entertainment" data-i18n="cat_entertainment">Entertainment</option>
+                            <option value="Udhaar"        data-i18n="cat_udhaar">Udhaar</option>
+                            <option value="Other"         data-i18n="cat_other">Other</option>
                         </select>
                     </div>
 
                     <div class="form-control text-center" style="margin-top: 15px;">
-                        <label>💵 Kitne paise lage? (Amount)</label>
+                        <label data-i18n="form_amount_label">💵 Kitne paise lage? (Amount)</label>
                         <div class="amount-group">
                             <span class="currency">₹</span>
                             <input type="number" id="expense-amount" placeholder="0" required>
@@ -127,72 +179,76 @@
 
                     <div class="toggle-group">
                         <input type="radio" id="mode-upi" name="payment-mode" value="Online/UPI" checked>
-                        <label for="mode-upi">📱 UPI / Online</label>
+                        <label for="mode-upi" data-i18n="form_pay_upi">📱 UPI / Online</label>
                         <input type="radio" id="mode-cash" name="payment-mode" value="Cash">
-                        <label for="mode-cash">💵 Cash</label>
+                        <label for="mode-cash" data-i18n="form_pay_cash">💵 Cash</label>
                     </div>
                     
                     <div class="action-row" style="margin-top: 15px;">
                         <button type="button" class="icon-btn-large mic" id="mic-btn" onclick="startVoiceRecognition()">🎤</button>
                         <label class="icon-btn-large camera">📷<input type="file" accept="image/*" id="bill-scanner" style="display:none;" onchange="handleBillScan(event)"></label>
-                        <button type="submit" class="btn primary-btn submit-btn" id="submit-expense-btn">Add Kharcha</button>
+                        <button type="submit" class="btn primary-btn submit-btn" id="submit-expense-btn" data-i18n="form_submit_btn">Add Kharcha</button>
                     </div>
                 </form>
             </div>
 
+            <!-- ── CALENDAR PAGE ── -->
             <div id="page-calendar" class="page">
                 <div class="page-header">
-                    <h2>📅 Calendar</h2>
-                    <p>Din ke hisaab se kharcha dekhein</p>
+                    <h2 data-i18n="calendar_title">📅 Calendar</h2>
+                    <p data-i18n="calendar_subtitle">Din ke hisaab se kharcha dekhein</p>
                 </div>
-                <div id="calendar-container" class="calendar-card">
-                    </div>
+                <div id="calendar-container" class="calendar-card"></div>
                 <div id="day-details" style="margin-top: 20px;">
-                    <h4 id="selected-date-label" style="margin-bottom: 10px; color: var(--primary);">Aaj ka hisaab</h4>
+                    <h4 id="selected-date-label" style="margin-bottom: 10px; color: var(--primary);" data-i18n="calendar_today_label">Aaj ka hisaab</h4>
                     <ul id="day-expense-list" class="ledger-list"></ul>
                 </div>
             </div>
 
+            <!-- ── KHATA / UDHAAR PAGE ── -->
             <div id="page-khata" class="page">
                 <div class="page-header">
-                    <h2>📒 Udhaar Book</h2>
-                    <p>Doston ka len-den manager</p>
+                    <h2 data-i18n="khata_title">📒 Udhaar Book</h2>
+                    <p data-i18n="khata_subtitle">Doston ka len-den manager</p>
                 </div>
                 
                 <div class="wallet-split" style="margin-bottom: 15px;">
                     <div class="split-card danger-card">
-                        <span class="card-label">🔴 Dena Hai</span>
+                        <span class="card-label" data-i18n="khata_give_label">🔴 Dena Hai</span>
                         <h3 id="khata-give">₹0</h3>
                     </div>
                     <div class="split-card success-card">
-                        <span class="card-label">🟢 Milenge</span>
+                        <span class="card-label" data-i18n="khata_get_label">🟢 Milenge</span>
                         <h3 id="khata-get">₹0</h3>
                     </div>
                 </div>
                 
                 <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                    <button class="btn danger-btn" onclick="openUdhaarModal('took')">↓ Maine Liya</button>
-                    <button class="btn success-btn" onclick="openUdhaarModal('gave')">↑ Maine Diya</button>
+                    <button class="btn danger-btn" onclick="openUdhaarModal('took')" data-i18n="khata_took_btn">↓ Maine Liya</button>
+                    <button class="btn success-btn" onclick="openUdhaarModal('gave')" data-i18n="khata_gave_btn">↑ Maine Diya</button>
                 </div>
 
                 <ul id="khata-list" class="ledger-list"></ul>
             </div>
 
+            <!-- ── HISTORY PAGE ── -->
             <div id="page-history" class="page">
                 <div class="form-control">
-                    <input type="text" id="search-item" class="search-bar" placeholder="🔍 Search Kharcha..." autocomplete="off">
+                    <input type="text" id="search-item" class="search-bar"
+                           placeholder="🔍 Search Kharcha..." autocomplete="off"
+                           data-i18n-placeholder="history_search_placeholder">
                 </div>
                 
                 <div class="filter-container" style="margin-bottom: 15px;">
-                    <button class="filter-pill active" onclick="setDashFilter('all', this)">Sabhi</button>
-                    <button class="filter-pill" onclick="setDashFilter('today', this)">📅 Aaj</button>
-                    <button class="filter-pill" onclick="setDashFilter('month', this)">📅 Is Mahine</button>
-                    <button class="filter-pill" onclick="setDashFilter('year', this)">📅 Is Saal</button>
+                    <button class="filter-pill active" onclick="setDashFilter('all', this)"   data-i18n="filter_all">Sabhi</button>
+                    <button class="filter-pill"        onclick="setDashFilter('today', this)" data-i18n="filter_today">📅 Aaj</button>
+                    <button class="filter-pill"        onclick="setDashFilter('month', this)" data-i18n="filter_month">📅 Is Mahine</button>
+                    <button class="filter-pill"        onclick="setDashFilter('year', this)"  data-i18n="filter_year">📅 Is Saal</button>
                 </div>
                 
                 <div class="tab-container">
-                    <button id="tab-exp" class="tab-btn active" onclick="switchHistoryTab('expense')">Kharcha</button>
-                    <button id="tab-inc" class="tab-btn" onclick="switchHistoryTab('income')">Aamdani</button>
+                    <button id="tab-exp" class="tab-btn active" onclick="switchHistoryTab('expense')" data-i18n="tab_expense">Kharcha</button>
+                    <button id="tab-inc" class="tab-btn"        onclick="switchHistoryTab('income')"  data-i18n="tab_income">Aamdani</button>
                 </div>
 
                 <div class="chart-wrapper" id="chart-box">
@@ -202,6 +258,7 @@
                 <ul id="expense-list" class="ledger-list"></ul>
             </div>
 
+            <!-- ── MENU PAGE ── -->
             <div id="page-menu" class="page">
                 <div class="menu-header">
                     <div class="avatar">👤</div>
@@ -209,93 +266,121 @@
                 </div>
                 
                 <div class="menu-list">
-                    <div class="menu-item" onclick="exportToExcel()"><span>📑 Download Excel Report</span></div>
-                    <div class="menu-item" onclick="backupData()"><span>💾 Backup Data</span></div>
-                    <div class="menu-item" onclick="restoreData()"><span>📂 Restore Data</span></div>
-                    <div class="menu-item danger-text" onclick="clearAllData()"><span>🗑️ Pura Data Clear Karein</span></div>
-                    <div class="menu-item" onclick="openTranslator()"><span>🌐 Language Translator</span></div>
-                    <div class="menu-item danger-text" onclick="logoutUser()" style="border-top: 5px solid var(--border);"><span>🚪 Logout</span></div>
+                    <div class="menu-item" onclick="exportToExcel()"><span data-i18n="menu_excel">📑 Download Excel Report</span></div>
+                    <div class="menu-item" onclick="backupData()"><span data-i18n="menu_backup">💾 Backup Data</span></div>
+                    <div class="menu-item" onclick="restoreData()"><span data-i18n="menu_restore">📂 Restore Data</span></div>
+                    <div class="menu-item danger-text" onclick="clearAllData()"><span data-i18n="menu_clear">🗑️ Pura Data Clear Karein</span></div>
+                    <div class="menu-item" onclick="openTranslator()"><span data-i18n="menu_translator">🌐 Language Translator</span></div>
+                    <div class="menu-item danger-text" onclick="logoutUser()" style="border-top: 5px solid var(--border);"><span data-i18n="menu_logout">🚪 Logout</span></div>
                 </div>
             </div>
         </main>
 
+        <!-- ── BOTTOM NAV ── -->
         <footer class="bottom-nav">
-            <button class="nav-item active" onclick="switchPage('home')">🏠<span>Home</span></button>
-            <button class="nav-item" onclick="switchPage('calendar')">📅<span>Calendar</span></button>
-            <button class="nav-item" onclick="switchPage('khata')">📒<span>Udhaar</span></button>
-            <button class="nav-item" onclick="switchPage('history')">📜<span>History</span></button>
-            <button class="nav-item" onclick="switchPage('menu')">⚙️<span>Menu</span></button>
+            <button class="nav-item active" onclick="switchPage('home')">🏠<span data-i18n="nav_home">Home</span></button>
+            <button class="nav-item"        onclick="switchPage('calendar')">📅<span data-i18n="nav_calendar">Calendar</span></button>
+            <button class="nav-item"        onclick="switchPage('khata')">📒<span data-i18n="nav_udhaar">Udhaar</span></button>
+            <button class="nav-item"        onclick="switchPage('history')">📜<span data-i18n="nav_history">History</span></button>
+            <button class="nav-item"        onclick="switchPage('menu')">⚙️<span data-i18n="nav_menu">Menu</span></button>
         </footer>
     </div>
 
+    <!-- ═══════════════════════════════════════
+         MODALS
+    ═══════════════════════════════════════ -->
+
+    <!-- Income Modal -->
     <div id="income-modal" class="modal-overlay">
         <div class="modal-box">
-            <h3 style="margin-bottom: 15px;">🏦 Aamdani Add Karein</h3>
+            <h3 style="margin-bottom: 15px;" data-i18n="income_modal_title">🏦 Aamdani Add Karein</h3>
             <div class="form-control">
-                <label>💵 Kitne paise aaye?</label>
+                <label data-i18n="income_amount_label">💵 Kitne paise aaye?</label>
                 <input type="number" id="income-amount" class="modal-input" placeholder="0">
             </div>
             <div class="form-control">
-                <label>💼 Kahan se aaye? (Source)</label>
+                <label data-i18n="income_source_label">💼 Kahan se aaye? (Source)</label>
                 <input type="text" id="income-source" class="modal-input" autocomplete="off">
             </div>
             <div class="action-row" style="margin-top: 15px;">
-                <button class="btn success-btn" onclick="submitIncome()">Save</button>
-                <button class="btn secondary-btn" onclick="closeModal('income-modal')">Cancel</button>
+                <button class="btn success-btn"   onclick="submitIncome()"            data-i18n="income_save_btn">Save</button>
+                <button class="btn secondary-btn" onclick="closeModal('income-modal')" data-i18n="income_cancel_btn">Cancel</button>
             </div>
         </div>
     </div>
 
+    <!-- Udhaar Modal -->
     <div id="udhaar-modal" class="modal-overlay">
         <div class="modal-box">
-            <h3 id="udhaar-modal-title" style="margin-bottom: 15px;">Udhaar</h3>
+            <h3 id="udhaar-modal-title" style="margin-bottom: 15px;" data-i18n="udhaar_modal_title">Udhaar</h3>
             <input type="hidden" id="udhaar-type">
             <div class="form-control">
-                <label>👤 Naam (Kiske sath?)</label>
+                <label data-i18n="udhaar_person_label">👤 Naam (Kiske sath?)</label>
                 <input type="text" id="udhaar-person" class="modal-input" autocomplete="off">
             </div>
             <div class="form-control">
-                <label>💵 Kitne Paise?</label>
+                <label data-i18n="udhaar_amount_label">💵 Kitne Paise?</label>
                 <input type="number" id="udhaar-amount" class="modal-input" placeholder="0">
             </div>
             <div class="action-row" style="margin-top: 15px;">
-                <button class="btn primary-btn" onclick="submitUdhaar()">Save</button>
-                <button class="btn secondary-btn" onclick="closeModal('udhaar-modal')">Cancel</button>
+                <button class="btn primary-btn"   onclick="submitUdhaar()"            data-i18n="udhaar_save_btn">Save</button>
+                <button class="btn secondary-btn" onclick="closeModal('udhaar-modal')" data-i18n="udhaar_cancel_btn">Cancel</button>
             </div>
         </div>
     </div>
 
+    <!-- Khata Detail Modal -->
     <div id="khata-detail-modal" class="modal-overlay">
         <div class="modal-box">
-            <h3 id="khata-detail-title" style="margin-bottom: 15px;">Udhaar Detail</h3>
-            <div class="form-control"><label>Naam:</label><p id="khata-detail-person" style="margin: 0; font-weight: bold;"></p></div>
-            <div class="form-control"><label>Type:</label><p id="khata-detail-type" style="margin: 0;"></p></div>
-            <div class="form-control"><label>Amount:</label><p id="khata-detail-amount" style="margin: 0; font-size: 18px; font-weight: bold;"></p></div>
-            <div class="form-control"><label>Date:</label><p id="khata-detail-time" style="margin: 0;"></p></div>
+            <h3 id="khata-detail-title" style="margin-bottom: 15px;" data-i18n="khata_detail_title">Udhaar Detail</h3>
+            <div class="form-control"><label data-i18n="khata_detail_name_label">Naam:</label><p id="khata-detail-person" style="margin: 0; font-weight: bold;"></p></div>
+            <div class="form-control"><label data-i18n="khata_detail_type_label">Type:</label><p id="khata-detail-type" style="margin: 0;"></p></div>
+            <div class="form-control"><label data-i18n="khata_detail_amount_label">Amount:</label><p id="khata-detail-amount" style="margin: 0; font-size: 18px; font-weight: bold;"></p></div>
+            <div class="form-control"><label data-i18n="khata_detail_date_label">Date:</label><p id="khata-detail-time" style="margin: 0;"></p></div>
             <div class="action-row" style="margin-top: 15px;">
-                <button class="btn secondary-btn" onclick="closeModal('khata-detail-modal')">Close</button>
+                <button class="btn secondary-btn" onclick="closeModal('khata-detail-modal')" data-i18n="khata_detail_close_btn">Close</button>
             </div>
         </div>
     </div>
 
+    <!-- History Detail Modal -->
+    <div id="history-detail-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 id="history-detail-title" style="margin-bottom: 15px;" data-i18n="history_detail_title_expense">Kharcha Detail</h3>
+            <div class="form-control"><label>📦 Item:</label><p id="history-detail-what" style="margin: 0; font-weight: bold;"></p></div>
+            <div class="form-control"><label>📍 Location:</label><p id="history-detail-person" style="margin: 0;"></p></div>
+            <div class="form-control"><label>🏷️ Category:</label><p id="history-detail-type" style="margin: 0;"></p></div>
+            <div class="form-control"><label data-i18n="khata_detail_amount_label">Amount:</label><p id="history-detail-amount" style="margin: 0; font-size: 18px; font-weight: bold;"></p></div>
+            <div class="form-control"><label data-i18n="khata_detail_date_label">Date:</label><p id="history-detail-time" style="margin: 0;"></p></div>
+            <div class="form-control"><label>💳 Mode:</label><p id="history-detail-mode" style="margin: 0;"></p></div>
+            <div class="action-row" style="margin-top: 15px;">
+                <button class="btn secondary-btn" onclick="closeModal('history-detail-modal')" data-i18n="history_detail_close_btn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Advisor Modal -->
     <div id="ai-modal" class="modal-overlay">
         <div class="modal-box" style="text-align:center;">
             <span style="font-size:40px; display:block; margin-bottom:10px;">🤖</span>
-            <h3>AI Financial Advisor</h3>
-            <p id="ai-response-text" style="font-size:14px; line-height:1.6; margin: 15px 0; color:var(--text-soft);">Data analyze ho raha hai...</p>
-            <button class="btn primary-btn" onclick="closeModal('ai-modal')">Samajh Gaya</button>
+            <h3 data-i18n="ai_modal_title">AI Financial Advisor</h3>
+            <p id="ai-response-text" style="font-size:14px; line-height:1.6; margin: 15px 0; color:var(--text-soft);" data-i18n="ai_modal_loading">Data analyze ho raha hai...</p>
+            <button class="btn primary-btn" onclick="closeModal('ai-modal')" data-i18n="ai_modal_ok_btn">Samajh Gaya</button>
         </div>
     </div>
 
+    <!-- Text Translator Modal (existing feature preserved) -->
     <div id="translator-modal" class="modal-overlay">
         <div class="modal-box">
-            <h3 style="margin-bottom: 15px;">🌐 Language Translator</h3>
+            <h3 style="margin-bottom: 15px;" data-i18n="translator_modal_title">🌐 Language Translator</h3>
             <div class="form-control">
-                <label>Enter text to translate:</label>
-                <textarea id="translate-input" class="modal-input" rows="3" placeholder="Type your text here..."></textarea>
+                <label data-i18n="translator_input_label">Enter text to translate:</label>
+                <textarea id="translate-input" class="modal-input" rows="3"
+                          data-i18n-placeholder="translator_input_placeholder"
+                          placeholder="Type your text here..."></textarea>
             </div>
             <div class="form-control">
-                <label>Translate to:</label>
+                <label data-i18n="translator_lang_label">Translate to:</label>
                 <select id="translate-lang" class="modal-input">
                     <option value="es">Spanish</option>
                     <option value="fr">French</option>
@@ -310,16 +395,20 @@
                 </select>
             </div>
             <div class="form-control">
-                <label>Translated text:</label>
-                <textarea id="translate-output" class="modal-input" rows="3" readonly placeholder="Translation will appear here..."></textarea>
+                <label data-i18n="translator_output_label">Translated text:</label>
+                <textarea id="translate-output" class="modal-input" rows="3" readonly
+                          data-i18n-placeholder="translator_output_placeholder"
+                          placeholder="Translation will appear here..."></textarea>
             </div>
             <div class="action-row" style="margin-top: 15px;">
-                <button class="btn primary-btn" onclick="translateText()">Translate</button>
-                <button class="btn secondary-btn" onclick="closeModal('translator-modal')">Close</button>
+                <button class="btn primary-btn"   onclick="translateText()"                 data-i18n="translator_btn">Translate</button>
+                <button class="btn secondary-btn" onclick="closeModal('translator-modal')"  data-i18n="translator_close_btn">Close</button>
             </div>
         </div>
     </div>
 
+    <!-- i18n must load BEFORE script.js -->
+    <script src="i18n.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

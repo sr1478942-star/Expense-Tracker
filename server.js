@@ -1,4 +1,4 @@
-﻿require('dotenv').config();
+require('dotenv').config();
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
@@ -11,6 +11,10 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_DB_URL = process.env.SUPABASE_DB_URL;
 const API_KEY = process.env.API_KEY;
+const GOOGLE_AI_KEY_1 = process.env.GOOGLE_AI_API_KEY_1 || '';
+const GOOGLE_AI_KEY_2 = process.env.GOOGLE_AI_API_KEY_2 || '';
+const GOOGLE_AI_KEY_3 = process.env.GOOGLE_AI_API_KEY_3 || '';
+const GROQ_KEY        = process.env.grok || '';
 
 if (!API_KEY) {
   console.error('Missing required environment variable: API_KEY');
@@ -79,7 +83,11 @@ app.use((req, res, next) => {
       }
       const injectedHtml = data.replace(
         '</head>',
-        `<script>window.__APP_CONFIG__ = { API_KEY: '${API_KEY}' };</script>\n</head>`
+        `<script>window.__APP_CONFIG__ = {
+  API_KEY: '${API_KEY}',
+  GEMINI_KEYS: ['${GOOGLE_AI_KEY_1}','${GOOGLE_AI_KEY_2}','${GOOGLE_AI_KEY_3}'].filter(Boolean),
+  GROQ_KEY: '${GROQ_KEY}'
+};</script>\n</head>`
       );
       res.send(injectedHtml);
     });
